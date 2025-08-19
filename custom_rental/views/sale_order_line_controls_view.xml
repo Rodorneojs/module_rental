@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ocultar controles de la lista y del kanban de líneas -->
+    <record id="sale_order_form_inherit_hide_line_links" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.hide.line.links</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- ======= VISTA LISTA (Order Lines) ======= -->
+            <!-- Mostrar "Agregar un producto" solo si NO viene de turnos -->
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/create[@name='add_product_control']" position="attributes">
+                <attribute name="invisible">parent.x_turn_slot</attribute>
+            </xpath>
+            
+            <!-- Ocultar SIEMPRE sección, nota y catálogo -->
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/create[@name='add_section_control']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/create[@name='add_note_control']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/button[@name='action_add_from_catalog']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- ======= VISTA KANBAN (móvil) ======= -->
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/create[@name='add_product_control']" position="attributes">
+                <attribute name="invisible">parent.x_turn_slot</attribute>
+            </xpath>
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/create[@name='add_section_control']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/create[@name='add_note_control']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/button[@name='action_add_from_catalog']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+        </field>
+    </record>
+</odoo>

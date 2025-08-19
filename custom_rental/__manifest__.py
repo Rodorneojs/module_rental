@@ -28,6 +28,7 @@
         'views/res_config_settings_views.xml',
         'views/sale_order_rental_dates.xml',
         'views/sale_order_turn_fields_view.xml',
+        'views/sale_order_line_controls_view.xml',
 
     ],
     'installable': True,

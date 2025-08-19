@@ -6,6 +6,28 @@ import pytz
 
 # ---------- helpers ----------
 
+def _normalize_tz_name(user_tzname):
+    import re
+    if not user_tzname:
+        return "UTC"
+    name = str(user_tzname).strip()
+    if name.lower().startswith("etc/"):
+        name = "Etc/" + name[4:]
+    elif name.lower().startswith("etc-"):
+        name = "Etc/" + name[4:]
+    m = re.search(r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$", name) or \
+        re.search(r"(?i)^GMT\s*([+-])\s*(\d+)$", name) or \
+        re.search(r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$", name)
+    if m:
+        sign, num = m.groups()
+        inv = "+" if sign == "-" else "-"
+        name = f"Etc/GMT{inv}{num}"
+    try:
+        pytz.timezone(name)
+        return name
+    except Exception:
+        return "UTC"
+    
 def _time_selection():
     step, vals = 30, []
     for h in range(24):
@@ -21,19 +43,20 @@ def _hm_to_minutes(hhmm):
     return int(h) * 60 + int(m)
 
 def _to_utc_naive(date_obj, hhmm, user_tzname):
-    """Devuelve datetime naive en UTC a partir de fecha + 'HH:MM' en tz del usuario."""
     hh, mm = [int(x) for x in (hhmm or "00:00").split(":")]
     local_dt = datetime(date_obj.year, date_obj.month, date_obj.day, hh, mm, 0)
-    tz = pytz.timezone(user_tzname or "UTC")
-    if local_dt.tzinfo is None:
-        local_dt = tz.localize(local_dt)
-    return local_dt.astimezone(pytz.UTC).replace(tzinfo=None)
+    tz = pytz.timezone(_normalize_tz_name(user_tzname))
+    try:
+        aware = tz.localize(local_dt, is_dst=None)
+    except (pytz.AmbiguousTimeError, pytz.NonExistentTimeError):
+        aware = tz.localize(local_dt, is_dst=True)
+    return aware.astimezone(pytz.UTC).replace(tzinfo=None)
 
 def _to_user_tz(dt, user_tzname):
-    user_tz = pytz.timezone(user_tzname or "UTC")
+    tz = pytz.timezone(_normalize_tz_name(user_tzname))
     if dt.tzinfo is None:
         dt = pytz.UTC.localize(dt)
-    return dt.astimezone(user_tz)
+    return dt.astimezone(tz)
 
 # ---------- modelo ----------
 

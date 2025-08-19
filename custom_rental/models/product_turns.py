@@ -212,14 +212,88 @@ class ProductTemplate(models.Model):
         return time(hh, mm, 0)
 
     def _to_utc_dt(self, y, m, d, t):
-        """Convierte una fecha + hora en la TZ del contexto a UTC (naive).
-        Si no hay tz en contexto, cae a la del usuario y por último a UTC.
+        """
+        Convierte una fecha local (en tz de contexto/usuario) a UTC naive,
+        corrigiendo nombres de tz tipo 'etc-gmt-6' y manejando DST.
         """
         tz_name = (self.env.context.get("tz") or self.env.user.tz or "UTC")
+        tz_name = self._normalize_tz_name(tz_name)
         tz = pytz.timezone(tz_name)
-        dt_local = tz.localize(datetime(y, m, d, t.hour, t.minute, 0), is_dst=None)
-        return dt_local.astimezone(pytz.UTC).replace(tzinfo=None)
 
+        local_dt = datetime(y, m, d, t.hour, t.minute, 0)
+        try:
+            aware = tz.localize(local_dt, is_dst=None)
+        except (pytz.AmbiguousTimeError, pytz.NonExistentTimeError):
+            # fuerza una elección razonable para horarios con/sin DST
+            aware = tz.localize(local_dt, is_dst=True)
+        return aware.astimezone(pytz.UTC).replace(tzinfo=None)
+
+    # ---------------- utils TZ/fechas ----------------
+
+    def _normalize_tz_name(self, tz_name):
+        """
+        Normaliza nombres 'raros' de zona horaria para pytz.
+        - Acepta variantes como 'etc-gmt-6', 'Etc/GMT-6', 'etc/GMT+6', etc.
+        - Corrige el signo invertido de la familia Etc/GMT en pytz.
+        Devuelve una tz válida o 'UTC' si no se reconoce.
+        """
+        import re
+        if not tz_name:
+            return "UTC"
+
+        name = str(tz_name).strip()
+
+        # uniformar prefijo 'Etc/'
+        if name.lower().startswith("etc/"):
+            name = "Etc/" + name[4:]
+        elif name.lower().startswith("etc-"):
+            name = "Etc/" + name[4:]
+
+        # ¿es de la familia Etc/GMT±N?
+        m = re.search(r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$", name)
+        if not m:
+            # también aceptamos 'GMT-6', 'gmt + 6', etc → lo pasamos a Etc/GMT±N
+            m = re.search(r"(?i)^GMT\s*([+-])\s*(\d+)$", name)
+        if not m:
+            m = re.search(r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$", name)
+
+        if m:
+            sign, num = m.groups()
+            # ¡OJO! En pytz, Etc/GMT invierte el signo
+            inv = "+" if sign == "-" else "-"
+            name = f"Etc/GMT{inv}{num}"
+
+        # Validar contra pytz
+        try:
+            pytz.timezone(name)
+            return name
+        except Exception:
+            return "UTC"
+    def _get_turn_partner(self, company):
+        """Devuelve/crea el cliente técnico 'Turn Slots' en la compañía dada."""
+        Partner = self.env['res.partner'].sudo()
+        partner = Partner.search([
+            ('name', '=', 'Turn Slots'),
+            ('company_id', 'in', [False, company.id]),   # permite partner sin compañía
+        ], limit=1)
+        if not partner:
+            Pricelist = self.env['product.pricelist'].sudo()
+            pricelist = Pricelist.search([('company_id', 'in', [False, company.id])], limit=1)
+            partner = Partner.create({
+                'name': 'Turn Slots',
+                'company_id': company.id,
+                'customer_rank': 1,
+                'property_product_pricelist': pricelist.id or False,
+            })
+        return partner
+
+    def _get_rent_rooms_template(self):
+        """Plantilla 'Rent Rooms' si existe (solo si USE_TEMPLATE=True)."""
+        if not self.env.registry.get('sale.order.template'):
+            return False
+        return self.env['sale.order.template'].sudo().search(
+            [('name', 'ilike', TEMPLATE_NAME)], limit=1
+        )
 
 
     # =======================================================
@@ -332,69 +406,37 @@ class ProductTemplate(models.Model):
     # =======================================================
     # (2) CREA/ACTUALIZA COTIZACIONES POR FECHA (1 order/fecha)
     # =======================================================
-    def _get_turn_partner(self, company):
-        """Cliente técnico 'Turn Slots' con lista de precios."""
-        Partner = self.env['res.partner'].sudo()
-        partner = Partner.search([('name', '=', 'Turn Slots')], limit=1)
-        if not partner:
-            pricelist = self.env['product.pricelist'].sudo().search(
-                [('company_id', 'in', [False, company.id])], limit=1
-            )
-            partner = Partner.create({
-                'name': 'Turn Slots',
-                'company_id': company.id,
-                'customer_rank': 1,
-                'property_product_pricelist': pricelist.id or False,
-            })
-        return partner
-
-    def _get_rent_rooms_template(self):
-        """Devuelve la plantilla 'Rent Rooms' si existe (si USE_TEMPLATE=True)."""
-        if not self.env.registry.get('sale.order.template'):
-            return False
-        return self.env['sale.order.template'].sudo().search([('name', 'ilike', TEMPLATE_NAME)], limit=1)
-
     def _ensure_turn_orders(self, iso_dates):
-        """
-        Crea/actualiza una cotización por cada fecha seleccionada.
-        Para que se vea en Schedule/Gantt, seguimos la ruta de la UI:
-          new() -> onchanges -> setear fechas -> onchanges -> create()
-        Así respetamos las horas del wizard y los onchanges de renting.
-        """
         self.ensure_one()
         if not iso_dates:
             return
-    
+
         company = self.company_id or self.env.company
         Order = self.env['sale.order'].sudo()
         Line  = self.env['sale.order.line'].sudo()
-    
-        # Campos según módulos instalados
+
         rent_start_f  = 'rental_start_date'  if 'rental_start_date'  in Order._fields else None
         rent_return_f = 'rental_return_date' if 'rental_return_date' in Order._fields else None
         pickup_f      = 'pickup_date'        if 'pickup_date'        in Order._fields else None
         return_f      = 'return_date'        if 'return_date'        in Order._fields else None
-    
+
         line_rent_start_f  = 'rental_start_date'  if 'rental_start_date'  in Line._fields else None
         line_rent_return_f = 'rental_return_date' if 'rental_return_date' in Line._fields else None
         line_pickup_f      = 'pickup_date'        if 'pickup_date'        in Line._fields else None
         line_return_f      = 'return_date'        if 'return_date'        in Line._fields else None
-    
+
         pricelist_f = 'pricelist_id' if 'pricelist_id' in Order._fields else None
         warehouse_f = 'warehouse_id' if 'warehouse_id' in Order._fields and self.env.registry.get('stock.warehouse') else None
-    
+
         partner  = self._get_turn_partner(company)
-        template = self._get_rent_rooms_template() if USE_TEMPLATE else False
         variant  = self.product_variant_id
-    
-        # Asegurar que la VARIANTE sea “rentable”
+
         if hasattr(variant, 'rent_ok') and not variant.rent_ok:
             try:
                 variant.write({'rent_ok': True})
             except Exception:
                 raise UserError(_("El producto debe estar marcado como 'Can be Rented'."))
-    
-        # Indexar existentes (por fechas + productos) para evitar duplicados
+
         existing = Order.search([
             ('x_turn_slot', '=', True),
             ('partner_id', '=', partner.id),
@@ -406,32 +448,25 @@ class ProductTemplate(models.Model):
             end_val   = getattr(o, rent_return_f) if rent_return_f else (getattr(o, return_f) if return_f else False)
             prod_ids  = tuple(sorted(o.order_line.mapped('product_id').ids))
             existing_keys.add((start_val, end_val, prod_ids))
-    
-        # Horarios por defecto para construir los rangos (desde los parámetros del producto)
+
         t_from = self._parse_hhmm(self.turn_hour_from or "09:00")
         t_to   = self._parse_hhmm(self.turn_hour_to   or "18:00")
-    
-        # Contexto de tz/idioma parecido a la UI
+
+        # El _to_utc_dt YA usa la tz normalizada del contexto/usuario
         ui_ctx = dict(self.env.context or {})
-        # Prioridad: tz de contexto (wizard) > partner > usuario > UTC
-        ui_ctx.setdefault('tz', self.env.context.get('tz') or partner.tz or self.env.user.tz or 'UTC')
+        ui_ctx.setdefault('tz', self._normalize_tz_name(self.env.context.get('tz') or partner.tz or self.env.user.tz or 'UTC'))
         ui_ctx.setdefault('lang', partner.lang or self.env.user.lang)
-    
+
         for iso in sorted(set(iso_dates)):
             y, m, d = [int(x) for x in iso.split('-')]
-            # OJO: _to_utc_dt debe usar la tz del contexto (ver función actualizada)
             start_dt = self._to_utc_dt(y, m, d, t_from)
             stop_dt  = self._to_utc_dt(y, m, d, t_to)
-    
+
             key_products = (variant.id,)
             if (start_dt, stop_dt, key_products) in existing_keys:
-                continue  # ya existe un equivalente
-            
-            # ---- Vals base de orden + UNA línea del producto (sin fechas aún) ----
-            line_vals = {
-                'product_id': variant.id,
-                'product_uom_qty': 1.0,
-            }
+                continue
+
+            line_vals = {'product_id': variant.id, 'product_uom_qty': 1.0}
             order_vals = {
                 'partner_id': partner.id,
                 'company_id': company.id,
@@ -439,92 +474,74 @@ class ProductTemplate(models.Model):
                 'origin': f"Turn Slots – {self.display_name} {iso}",
                 'note':   f"Auto – Turno {self.display_name} {iso}",
                 'order_line': [(0, 0, line_vals)],
-    
-                # >>> NUEVO: guardar embarcación y temporada desde producto/wizard <<<
                 'x_turn_yacht_id': (self.turn_yacht_id.id or False),
                 'x_turn_season_id': (self.nav_season_id.id or False),
             }
-    
-            # lista de precios / almacén (si aplican)
             if pricelist_f and not order_vals.get(pricelist_f):
                 order_vals[pricelist_f] = partner.property_product_pricelist.id or False
             if warehouse_f:
                 wh = self.env['stock.warehouse'].sudo().search([('company_id', '=', company.id)], limit=1)
                 if wh:
                     order_vals[warehouse_f] = wh.id
-    
+
             with self.env.cr.savepoint():
+                tmp = Order.with_context(ui_ctx).new(order_vals)
                 try:
-                    # ======== Ruta UI: new() + onchanges ========
-                    tmp = Order.with_context(ui_ctx).new(order_vals)
-                    try:
-                        if hasattr(tmp, '_onchange_partner_id'):
-                            tmp._onchange_partner_id()
-                        if hasattr(tmp, '_onchange_pricelist_id'):
-                            tmp._onchange_pricelist_id()
-                        if hasattr(tmp, '_onchange_company_id'):
-                            tmp._onchange_company_id()
-                    except Exception:
-                        _logger.exception("Onchange de cabecera no disponible.")
-    
-                    # -> Ahora sí, fijamos FECHAS en la ORDEN y disparamos su onchange
-                    if rent_start_f:  setattr(tmp, rent_start_f,  start_dt)
-                    if rent_return_f: setattr(tmp, rent_return_f, stop_dt)
-                    if pickup_f:      setattr(tmp, pickup_f,      start_dt)
-                    if return_f:      setattr(tmp, return_f,      stop_dt)
+                    if hasattr(tmp, '_onchange_partner_id'):   tmp._onchange_partner_id()
+                    if hasattr(tmp, '_onchange_pricelist_id'): tmp._onchange_pricelist_id()
+                    if hasattr(tmp, '_onchange_company_id'):   tmp._onchange_company_id()
+                except Exception:
+                    _logger.exception("Onchange de cabecera no disponible.")
+
+                # Fechas en cabecera: preferimos par rental_*; si no existe, usamos pickup/return
+                if rent_start_f and rent_return_f:
+                    setattr(tmp, rent_start_f,  start_dt)
+                    setattr(tmp, rent_return_f, stop_dt)
                     if hasattr(tmp, '_onchange_rental_dates'):
                         tmp._onchange_rental_dates()
-    
-                    # -> Fechas también en la(s) LÍNEA(s) y onchanges de línea
-                    for l in tmp.order_line.filtered(lambda ll: not ll.display_type):
-                        if line_rent_start_f:  setattr(l, line_rent_start_f,  start_dt)
-                        if line_rent_return_f: setattr(l, line_rent_return_f, stop_dt)
-                        if line_pickup_f:      setattr(l, line_pickup_f,      start_dt)
-                        if line_return_f:      setattr(l, line_return_f,      stop_dt)
-                        try:
-                            if hasattr(l, '_onchange_product_id'):
-                                l._onchange_product_id()
-                            if hasattr(l, '_onchange_product_uom_qty'):
-                                l._onchange_product_uom_qty()
-                        except Exception:
-                            _logger.exception("Onchange de línea no disponible.")
-    
-                    # (Opcional) tus campos UI de “fecha única”
-                    if 'x_turn_date' in Order._fields:
-                        setattr(tmp, 'x_turn_date', fields.Date.to_date(iso))
-                        if 'x_turn_hour_from' in Order._fields:
-                            setattr(tmp, 'x_turn_hour_from', self.turn_hour_from or "09:00")
-                        if 'x_turn_hour_to' in Order._fields:
-                            setattr(tmp, 'x_turn_hour_to',   self.turn_hour_to   or "18:00")
-    
-                    # Crear con la caché convertida
-                    order = Order.create(tmp._convert_to_write(tmp._cache))
-    
-                    # Precios según duración (asegura tarifa correcta)
+                elif pickup_f and return_f:
+                    setattr(tmp, pickup_f, start_dt)
+                    setattr(tmp, return_f, stop_dt)
+
+                for l in tmp.order_line.filtered(lambda ll: not ll.display_type):
+                    if rent_start_f and rent_return_f and line_rent_start_f and line_rent_return_f:
+                        setattr(l, line_rent_start_f,  start_dt)
+                        setattr(l, line_rent_return_f, stop_dt)
+                    elif pickup_f and return_f and line_pickup_f and line_return_f:
+                        setattr(l, line_pickup_f, start_dt)
+                        setattr(l, line_return_f, stop_dt)
                     try:
-                        if hasattr(order, 'action_update_rental_prices'):
-                            order.action_update_rental_prices()
+                        if hasattr(l, '_onchange_product_id'):     l._onchange_product_id()
+                        if hasattr(l, '_onchange_product_uom_qty'): l._onchange_product_uom_qty()
                     except Exception:
-                        _logger.exception("No se pudo actualizar precios de renting.")
-    
-                    # Recomputes finales
-                    try:
-                        order.invalidate_recordset()
-                        if hasattr(order.order_line, '_compute_is_rental'):
-                            order.order_line._compute_is_rental()
-                        if hasattr(order, '_compute_has_rented_products'):
-                            order._compute_has_rented_products()
-                        if hasattr(order, '_compute_is_rental_order'):
-                            order._compute_is_rental_order()
-                        if hasattr(order, '_compute_rental_status'):
-                            order._compute_rental_status()
-                        if hasattr(order, '_compute_remaining_hours'):
-                            order._compute_remaining_hours()
-                    except Exception:
-                        _logger.exception("No se pudo forzar recomputes de alquiler.")
-    
+                        _logger.exception("Onchange de línea no disponible.")
+
+                if 'x_turn_date' in Order._fields:
+                    setattr(tmp, 'x_turn_date', fields.Date.to_date(iso))
+                    if 'x_turn_hour_from' in Order._fields:
+                        setattr(tmp, 'x_turn_hour_from', self.turn_hour_from or "09:00")
+                    if 'x_turn_hour_to' in Order._fields:
+                        setattr(tmp, 'x_turn_hour_to',   self.turn_hour_to   or "18:00")
+
+                order = Order.create(tmp._convert_to_write(tmp._cache))
+
+                try:
+                    if hasattr(order, 'action_update_rental_prices'):
+                        order.action_update_rental_prices()
                 except Exception:
-                    _logger.exception("Fallo creando SO para %s", iso)
+                    _logger.exception("No se pudo actualizar precios de renting.")
+
+                try:
+                    order.invalidate_recordset()
+                    if hasattr(order.order_line, '_compute_is_rental'): order.order_line._compute_is_rental()
+                    if hasattr(order, '_compute_has_rented_products'):  order._compute_has_rented_products()
+                    if hasattr(order, '_compute_is_rental_order'):      order._compute_is_rental_order()
+                    if hasattr(order, '_compute_rental_status'):        order._compute_rental_status()
+                    if hasattr(order, '_compute_remaining_hours'):      order._compute_remaining_hours()
+                except Exception:
+                    _logger.exception("No se pudo forzar recomputes de alquiler.")
+
+
 
 
 
@@ -646,9 +663,34 @@ class RentalTurnBatchWizard(models.TransientModel):
         self.ensure_one()
         prod = self.product_id.sudo()
 
+        # --- helper local por si el método del ProductTemplate aún no existe ---
+        def _normalize_tz_name_any(tzname):
+            import re, pytz
+            if not tzname:
+                return "UTC"
+            name = str(tzname).strip()
+            # uniformar prefijo Etc/
+            if name.lower().startswith("etc/"):
+                name = "Etc/" + name[4:]
+            elif name.lower().startswith("etc-"):
+                name = "Etc/" + name[4:]
+            # detectar familia Etc/GMT±N y corregir signo invertido de pytz
+            m = (re.search(r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$", name)
+                 or re.search(r"(?i)^GMT\s*([+-])\s*(\d+)$", name)
+                 or re.search(r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$", name))
+            if m:
+                sign, num = m.groups()
+                inv = "+" if sign == "-" else "-"
+                name = f"Etc/GMT{inv}{num}"
+            try:
+                pytz.timezone(name)
+                return name
+            except Exception:
+                return "UTC"
+
         try:
             with self.env.cr.savepoint():
-                # 1) Guardar prefills (cabecera) — incluimos turn_status como default manual
+                # 1) Guardar prefills en el producto
                 prod.write({
                     "turn_yacht_id": self.yacht_id.id or False,
                     "nav_season_id": self.season_id.id or False,
@@ -658,7 +700,7 @@ class RentalTurnBatchWizard(models.TransientModel):
                     "turn_status":    self.status or "inactive",
                 })
 
-                # 2) Upsert de líneas por fecha
+                # 2) Upsert de líneas/fechas
                 Line = self.env["rental.turn.param.line"].sudo()
                 selected_dates = sorted({fields.Date.to_date(l.date) for l in self.line_ids if l.date})
 
@@ -671,7 +713,7 @@ class RentalTurnBatchWizard(models.TransientModel):
                     "season_id": self.season_id.id or False,
                     "hour_from": self.hour_from or "08:00",
                     "hour_to":   self.hour_to or "18:00",
-                    "status":    self.status or "inactive",   # <<< CAMBIO
+                    "status":    self.status or "inactive",
                     "quota":     self.quota or 0,
                 }
 
@@ -682,7 +724,7 @@ class RentalTurnBatchWizard(models.TransientModel):
                         else:
                             Line.create(dict(vals_common, date=d))
 
-                # Eliminar no seleccionadas
+                # eliminar no seleccionadas
                 to_keep = set(selected_dates)
                 to_drop = existing.filtered(lambda r: r.date not in to_keep)
                 if to_drop:
@@ -696,12 +738,22 @@ class RentalTurnBatchWizard(models.TransientModel):
                     prod._sync_blocked_periods_from_turn_dates(iso_dates)
 
                 with self.env.cr.savepoint():
-                    tz_ctx = {'tz': self.env.user.tz or 'UTC'}
-                    prod.with_context(tz_ctx)._ensure_turn_orders(iso_dates)
+                    # Normalizar TZ (use el método del producto si existe; si no, usa helper local)
+                    raw_tz = (self.env.user.tz or self.env.context.get('tz') or 'UTC')
+                    if hasattr(prod, "_normalize_tz_name"):
+                        try:
+                            user_tz = prod._normalize_tz_name(raw_tz)  # método del ProductTemplate
+                        except Exception:
+                            user_tz = _normalize_tz_name_any(raw_tz)
+                    else:
+                        user_tz = _normalize_tz_name_any(raw_tz)
 
-        except Exception:
+                    prod.with_context(tz=user_tz)._ensure_turn_orders(iso_dates)
+
+        except Exception as e:
             _logger.exception("Error general al confirmar el wizard de turnos")
-            raise UserError(_("No se pudieron registrar los turnos. Revisa el log para más detalles."))
+            # muestra el detalle real para poder depurar
+            raise UserError(_("No se pudieron registrar los turnos.\nDetalle técnico: %s") % (str(e) or repr(e)))
 
         return {"type": "ir.actions.act_window_close"}
 
@@ -758,7 +810,6 @@ class SaleOrderLine(models.Model):
 
             l.x_sched_start = start
             l.x_sched_stop = stop
-
 
 class RentalTurnBatchWizardLine(models.TransientModel):
     _name = "rental.turn.batch.wizard.line"
