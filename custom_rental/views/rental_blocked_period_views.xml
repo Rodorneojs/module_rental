@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Search View -->
+    <record id="view_rental_blocked_period_search" model="ir.ui.view">
+        <field name="name">rental.blocked.period.search</field>
+        <field name="model">rental.blocked.period</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Bloqueos">
+                <filter name="filter_today" string="Hoy"
+                        domain="[('date_blocked', '=', context_today())]"
+                        help="Solo los bloqueos de hoy"/>
+                <filter name="filter_private" string="Uso Privado"
+                        domain="[('block_type','=','private')]"/>
+                <filter name="filter_maintenance" string="Mantenimiento"
+                        domain="[('block_type','=','maintenance')]"/>
+                <filter name="filter_boat" string="Embarcación..."
+                        domain="[]" context="{'search_default_boat_id': 1}"/>
+                <field name="boat_id" string="Embarcación"/>
+                <field name="date_blocked" string="Fecha Bloqueada"/>
+                <field name="block_type" string="Tipo de Bloqueo"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_by_boat" string="Embarcación" context="{'group_by': 'boat_id'}"/>
+                    <filter name="group_by_date" string="Fecha Bloqueada" context="{'group_by': 'date_blocked'}"/>
+                    <filter name="group_by_type" string="Tipo de Bloqueo" context="{'group_by': 'block_type'}"/>
+                </group>
+                <searchpanel>
+                    <field name="boat_id" icon="fa-ship" enable_counters="1" select="multi"/>
+                    <field name="block_type" icon="fa-tag" enable_counters="1" select="multi"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+    
+    <!-- List View -->
+    <record id="view_rental_blocked_period_list" model="ir.ui.view">
+        <field name="name">rental.blocked.period.list</field>
+        <field name="model">rental.blocked.period</field>
+        <field name="arch" type="xml">
+            <list string="Bloqueos de Alquiler">
+                <field name="boat_id" string="Embarcación"/>
+                <field name="date_blocked" string="Fecha"/>
+                <field name="block_type"/>
+                <field name="notes" string="Descripción"/>
+            </list>
+        </field>
+    </record>
+    
+    <!-- Form View -->
+    <record id="view_rental_blocked_period_form" model="ir.ui.view">
+        <field name="name">rental.blocked.period.form</field>
+        <field name="model">rental.blocked.period</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="block_type_select" widget="radio"/>
+                        <field name="boat_id"/>
+                        <field name="date_single"
+                               invisible="block_type_select != 'single'"
+                               required="block_type_select == 'single'"/>
+                        <field name="date_from"
+                               invisible="block_type_select != 'range'"
+                               required="block_type_select == 'range'"/>
+                        <field name="date_to"
+                               invisible="block_type_select != 'range'"
+                               required="block_type_select == 'range'"/>
+                        <field name="use_type"/>
+                        <field name="notes"/>
+                    </group>
+                    <footer>
+                        <button string="Cancelar" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Calendar View -->
+    <record id="view_rental_blocked_period_calendar" model="ir.ui.view">
+        <field name="name">rental.blocked.period.calendar</field>
+        <field name="model">rental.blocked.period</field>
+        <field name="arch" type="xml">
+            <calendar string="Días Bloqueados"
+                      date_start="date_blocked"
+                      color="boat_id"
+                      mode="month"
+                      quick_create="false">
+                <field name="display_name"/>
+                <field name="boat_id"/>
+                <field name="notes"/>
+            </calendar>
+        </field>
+    </record>
+    
+    <!-- Acción principal: muestra lista, calendario y formulario -->
+    <record id="action_rental_blocked_period" model="ir.actions.act_window">
+        <field name="name">Periodos Bloqueados</field>
+        <field name="res_model">rental.blocked.period</field>
+        <field name="view_mode">calendar,list,form</field>
+        <field name="search_view_id" ref="view_rental_blocked_period_search"/>
+        <field name="view_id" ref="view_rental_blocked_period_list"/>
+    </record>
+    
+    <menuitem id="menu_rental_blocked_period"
+              name="Bloqueos"
+              parent="menu_rental_availability"
+              action="action_rental_blocked_period"
+              sequence="2"/>
+</odoo>

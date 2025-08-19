@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_rental_availability_user,rental.availability,model_rental_availability,base.group_user,1,1,1,1
+access_rental_blocked_period_user,rental.blocked.period,model_rental_blocked_period,base.group_user,1,1,1,1
+access_block_period_wizard,block.period.wizard,model_block_period_wizard,base.group_user,1,1,1,1
+access_block_period_action_selector,block.period.action.selector,model_block_period_action_selector,base.group_user,1,1,1,1
+access_boat_daily_availability,Boat Daily Availability,model_boat_daily_availability,base.group_user,1,1,1,1
+access_boat_availability_wizard,Boat Availability Wizard,model_boat_availability_wizard,base.group_user,1,1,1,1
+access_rental_product_image,access_rental_product_image,model_rental_product_image,base.group_user,1,1,1,1
+
+access_rental_calendar_date_user,rental.calendar.date,model_rental_calendar_date,base.group_user,1,1,1,1
+access_rental_blocked_period_user_turn,Turn Blocks,model_rental_blocked_period,base.group_user,1,1,1,1
+access_rental_turn_param_line_user,rental.turn.param.line,model_rental_turn_param_line,base.group_user,1,1,1,1
+access_rental_turn_batch_wizard,rental.turn.batch.wizard,model_rental_turn_batch_wizard,base.group_user,1,1,1,1
+access_rental_turn_batch_wizard_line,rental.turn.batch.wizard.line,model_rental_turn_batch_wizard_line,base.group_user,1,1,1,1

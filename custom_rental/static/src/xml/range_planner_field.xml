@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+  <t t-name="custom_rental.RangePlannerField" owl="1">
+    <div class="o_range_planner_field">
+      <!-- input oculto: mantiene el CSV sincronizado con el form -->
+      <input t-ref="input" type="text" class="o_ghost" style="display:none;"/>
+      <div t-ref="calendar" class="calendar-list-month"></div>
+    </div>
+  </t>
+</templates>

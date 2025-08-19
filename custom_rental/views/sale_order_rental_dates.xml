@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    
+    <!-- 2.1) Mantener fechas nativas en el form de Sale/Rental -->
+    <record id="view_order_form_inherit_turn_dates" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.turn.dates</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="rental_start_date"/>
+                <field name="rental_return_date"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- 2.2) Vista Gantt RELAJADA sobre sale.order.line -->
+    <record id="view_sale_order_line_gantt_turn_relaxed" model="ir.ui.view">
+        <field name="name">sale.order.line.gantt.turn.relaxed</field>
+        <field name="model">sale.order.line</field>
+        <field name="arch" type="xml">
+            <gantt string="Schedule (Turnos)"
+                   date_start="x_sched_start"
+                   date_stop="x_sched_stop"
+                   default_group_by="product_id"
+                   create="0" delete="0" edit="0">
+                <field name="product_id"/>
+                <field name="order_id"/>
+                <field name="name"/>
+            </gantt>
+        </field>
+    </record>
+    
+    <!-- 2.3) NUESTRA acción (no tocamos la nativa si no existe el xmlid) -->
+    <record id="sale_renting.action_rental_order_schedule" model="ir.actions.act_window">
+        <field name="name">Schedule (Turnos)</field>
+        <field name="res_model">sale.order.line</field>
+        <field name="view_mode">gantt,list,form</field>
+        <field name="view_id" ref="view_sale_order_line_gantt_turn_relaxed"/>
+        <field name="domain">[
+            ('x_is_rental_any','=',True),
+            ('x_sched_start','!=',False),
+            ('x_sched_stop','!=',False),
+            ('order_id.state','!=','cancel')
+            ]</field>
+        <field name="context">{'search_default_groupby_product_id': 1}</field>
+    </record>
+    
+    <!-- IMPORTANTE: no creamos menú aquí para evitar romper si el parent no existe.
+         Reapuntamos el menú del Schedule a esta acción con un post_init_hook en Python. -->
+         
+</odoo>

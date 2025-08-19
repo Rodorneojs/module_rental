@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_order_form_single_date_inherit" model="ir.ui.view">
+        <field name="name">sale.order.form.single.date.inherit</field>
+        <field name="model">sale.order</field>
+        <!-- Vista base de Renting -->
+        <field name="inherit_id" ref="sale_renting.sale_order_rental_form_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- 1) Oculta el group completo que contiene pickup/return, duration y el botón -->
+            <xpath expr="//group[.//field[@name='pickup_date'] and .//field[@name='return_date']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- 2) Por si la vista varía en otra versión, oculta también campos sueltos -->
+            <xpath expr="//field[@name='pickup_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='return_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='pickup_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//label[@for='return_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            
+            <!-- 3) Inserta tu bloque de 'fecha única' justo después -->
+            <xpath expr="//group[.//field[@name='pickup_date']]" position="after">
+                <group string="Rental period (single date)" name="x_rental_single_date_group">
+                    <field name="x_turn_date" required="1"/>
+                    <field name="x_turn_hour_from" required="1"/>
+                    <field name="x_turn_hour_to" required="1"/>
+                    <!-- reusar el botón de recalcular precios si existe en tu versión -->
+                    <button name="action_update_rental_prices"
+                            type="object"
+                            string="Update Rental Prices"
+                            class="oe_link"
+                            attrs="{'invisible': [('order_line','=',[])]}"/>
+                </group>
+            </xpath>
+            
+        </field>
+    </record>
+</odoo>

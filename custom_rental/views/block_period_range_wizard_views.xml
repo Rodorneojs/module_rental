@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_block_period_wizard_form" model="ir.ui.view">
+        <field name="name">block.period.wizard.form</field>
+        <field name="model">block.period.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Nuevo Bloqueo">
+                <group>
+                    <field name="block_type_select" widget="radio"/>
+                    <field name="boat_id"/>
+                    <field name="date_single"
+                           invisible="block_type_select != 'single'"
+                           required="block_type_select == 'single'"/>
+                    <field name="date_from"
+                           invisible="block_type_select != 'range'"
+                           required="block_type_select == 'range'"/>
+                    <field name="date_to"
+                           invisible="block_type_select != 'range'"
+                           required="block_type_select == 'range'"/>
+                    <field name="use_type"/>
+                    <field name="notes"/>
+                </group>
+                <footer>
+                    <button string="Aplicar" type="object" name="action_apply" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_block_period_wizard" model="ir.actions.act_window">
+        <field name="name">Nuevo Bloqueo</field>
+        <field name="res_model">block.period.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_block_period_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+</odoo>

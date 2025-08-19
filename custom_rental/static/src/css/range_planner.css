@@ -1,0 +1,94 @@
+/* Contenedor */
+.o_range_planner_field .calendar-list-month{
+  padding:16px;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 6px 18px rgba(16,24,40,.08);
+}
+
+/* Mano y sin select de texto */
+.o_range_planner_field .fc .fc-daygrid-day,
+.o_range_planner_field .fc .fc-daygrid-day-frame,
+.o_range_planner_field .fc .fc-daygrid-day-top,
+.o_range_planner_field .fc .fc-daygrid-day-number,
+.o_range_planner_field .fc .fc-daygrid-day-events,
+.o_range_planner_field .fc .fc-daygrid-day-bg{
+  cursor:pointer !important;
+  user-select:none;
+}
+.o_range_planner_field .fc .fc-daygrid-day-top a{
+  pointer-events:none;
+  text-decoration:none;
+  color:inherit;
+}
+
+/* Días seleccionados como bg-events (no bloquean clic) */
+.o_range_planner_field .fc .fc-bg-event{
+  background:#714b67 !important;
+  opacity:.95 !important;
+  border-radius:8px;
+  pointer-events:none !important;
+}
+
+/* Overlay del drag */
+.o_range_planner_field .fc .fc-highlight{
+  background: rgba(135,90,123,.18) !important;
+  pointer-events:none !important;
+}
+
+/* ===== Multimes con respiro (FORZAR 3x4) ===== */
+.o_range_planner_field .fc-multimonth{
+  display:flex;
+  flex-wrap:wrap;
+  column-gap:24px;
+  row-gap:24px;
+}
+
+/* Tres columnas en desktop */
+.o_range_planner_field .fc-multimonth .fc-multimonth-month{
+  width:auto !important; /* anula widths anteriores (25%, 33%, etc.) */
+  flex:0 0 calc((100% - 48px)/3) !important;   /* (100% - 2 gaps) / 3 */
+  max-width:calc((100% - 48px)/3) !important;
+}
+
+/* Reafirmar 3 columnas también en pantallas muy grandes */
+@media (min-width:1600px){
+  .o_range_planner_field .fc-multimonth .fc-multimonth-month{
+    flex-basis:calc((100% - 48px)/3) !important;
+    max-width:calc((100% - 48px)/3) !important;
+  }
+}
+
+/* 2 columnas en tablets */
+@media (max-width:992px){
+  .o_range_planner_field .fc-multimonth .fc-multimonth-month{
+    flex-basis:calc((100% - 24px)/2) !important;
+    max-width:calc((100% - 24px)/2) !important;
+  }
+}
+
+/* 1 columna en móvil */
+@media (max-width:576px){
+  .o_range_planner_field .fc-multimonth .fc-multimonth-month{
+    flex-basis:100% !important;
+    max-width:100% !important;
+  }
+}
+
+/* “Hoy” en lila clarito (local) */
+.o_range_planner_field .fc{
+  --fc-today-bg-color:#F3E8F5;
+}
+.o_range_planner_field .fc-day-today .fc-daygrid-day-number{
+  color:#714b67 !important;
+  font-weight:700;
+}
+.o_range_planner_field .fc-day-today .fc-daygrid-day-frame{
+  box-shadow:inset 0 0 0 2px #E9D5EF;
+  border-radius:6px;
+}
+.kr-date-pill-wrap { display:flex; flex-wrap:wrap; gap:8px; }
+.kr-date-pill {
+  display:inline-block; padding:4px 10px; border-radius:999px;
+  background:#f3e8f5; border:1px solid #e9d5ef; font-size:12px; color:#714b67;
+}

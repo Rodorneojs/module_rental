@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="custom_rental_res_config_settings_view_form_inherit" model="ir.ui.view">
+    <field name="name">custom.rental.settings.form.inherit</field>
+    <field name="model">res.config.settings</field>
+    <field name="inherit_id" ref="sale_renting.res_config_settings_view_form"/>
+    <field name="arch" type="xml">
+
+      <!-- Insertar dentro del bloque de rental_delay_costs, después de Product -->
+      <xpath expr="//setting[@name='rental_delay_costs']/div[hasclass('content-group')]/div[last()]" position="after">
+        <div class="row mt2">
+          <label string="Weeks Occupied" for="weeks_occupied" class="col-lg-3 o_light_label"/>
+          <field name="weeks_occupied" class="col-lg-2"/>
+        </div>
+      </xpath>
+
+    </field>
+  </record>
+</odoo>

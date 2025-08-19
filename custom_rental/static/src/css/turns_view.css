@@ -1,0 +1,51 @@
+/* ===== Turnos: layout estable y con separador ===== */
+.kr-turns-row{
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:flex-start;
+  gap:14px;
+}
+
+/* Izquierda con separador */
+.kr-turns-col-left{
+  flex:0 0 70%;
+  max-width:70%;
+  min-width:560px;
+  padding-right:16px;
+  border-right:1px solid #e5e5e5;
+}
+
+/* Derecha: fechas, sin desbordar */
+.kr-turns-col-right{
+  flex:0 0 30%;
+  max-width:30%;
+  padding-left:20px;           /* un pelín más para despegar del separador */
+  overflow:hidden;
+}
+
+.kr-turns-col-right .o_list_table{
+  width:100% !important;
+  max-width:100%;
+  table-layout:fixed;
+  margin-left:1px;             /* evita que el borde recorte el header */
+}
+
+.kr-turns-col-right .o_list_table th,
+.kr-turns-col-right .o_list_table td{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Columna 1: icono borrar (reserva espacio) */
+.kr-turns-col-right .o_list_table th:first-child,
+.kr-turns-col-right .o_list_table td:first-child{
+  width:36px;
+  text-align:center;
+}
+
+/* Columna 2: la fecha (muestra bien 'Date') */
+.kr-turns-col-right .o_list_table th:nth-child(2),
+.kr-turns-col-right .o_list_table td:nth-child(2){
+  width:150px;
+}

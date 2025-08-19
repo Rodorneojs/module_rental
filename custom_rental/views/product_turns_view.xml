@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- (Opcional) Lista simple si alguna vez se abre fuera del producto -->
+    <record id="view_rental_calendar_date_list" model="ir.ui.view">
+        <field name="name">rental.calendar.date.list</field>
+        <field name="model">rental.calendar.date</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="false">
+                <field name="date"/>
+                <field name="product_id" invisible="1"/>
+            </list>
+        </field>
+    </record>
+    
+    <record id="action_rental_calendar_date_product" model="ir.actions.act_window">
+        <field name="name">Fechas</field>
+        <field name="res_model">rental.calendar.date</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('product_id','=',active_id)]</field>
+        <field name="context">{'default_product_id': active_id}</field>
+    </record>
+    
+    <!-- ===== Pestaña Turnos: UNA sola lista (una fila por fecha) ===== -->
+    <record id="view_product_template_turns" model="ir.ui.view">
+        <field name="name">product.template.turns.tab</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- buffers técnicos invisibles -->
+            <xpath expr="//sheet" position="inside">
+                <field name="turn_available_dates" invisible="1"/>
+                <field name="turn_available_dates_html" invisible="1"/>
+            </xpath>
+            
+            <xpath expr="//sheet/notebook" position="inside">
+                <page name="turns_tab" string="Turnos">
+                    
+                    <!-- Lista única: Embarcación, Temporada, FECHA, Hora inicio, Hora final, Estado, Cuota -->
+                    <field name="turn_param_line_ids" nolabel="1">
+                        <list create="false" delete="true">
+                            <field name="yacht_id"/>
+                            <field name="season_id"/>
+                            <field name="date"/>
+                            <field name="hour_from"/>
+                            <field name="hour_to"/>
+                            <field name="status" readonly="1"/>
+                            <field name="quota"/>
+                        </list>
+                        <form string="Turno" create="false" edit="false">
+                            <group>
+                                <field name="yacht_id" readonly="1"/>
+                                <field name="season_id" readonly="1"/>
+                                <field name="date" readonly="1"/>
+                                <field name="hour_from" readonly="1"/>
+                                <field name="hour_to" readonly="1"/>
+                                <field name="status" readonly="1"/>
+                                <field name="quota" readonly="1"/>
+                            </group>
+                        </form>
+                    </field>
+                    
+                    <div class="mt-3">
+                        <button string="Crear nuevos turnos"
+                                name="action_open_turn_batch_wizard"
+                                type="object"
+                                class="btn-primary"/>
+                    </div>
+                    
+                </page>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- ===== Wizard: parámetros + lista + calendario ===== -->
+    <record id="view_rental_turn_batch_wizard_form" model="ir.ui.view">
+        <field name="name">rental.turn.batch.wizard.form</field>
+        <field name="model">rental.turn.batch.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registrar parámetros y fechas" create="false" edit="false">
+                <sheet>
+                    <group col="2">
+                        <!-- Izquierda: parámetros -->
+                        <group>
+                            <field name="product_id" readonly="1"/>
+                            <field name="yacht_id"/>
+                            <field name="season_id"/>
+                            <field name="hour_from"/>
+                            <field name="hour_to"/>
+                            <!-- <<< CAMBIO: estado editable en wizard >>> -->
+                            <field name="status"/>
+                            <field name="quota"/>
+                        </group>
+                        <!-- Derecha: lista de fechas -->
+                        <group>
+                            <field name="line_ids" nolabel="1" invisible="1">
+                                <list create="false" delete="true" editable="bottom">
+                                    <field name="date"/>
+                                </list>
+                            </field>
+                        </group>
+                    </group>
+                    
+                    <!-- Calendario embebido -->
+                    <group string="Calendario seleccion multiples fechas">
+                        <field name="wizard_available_dates" widget="range_planner" nolabel="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+</odoo>

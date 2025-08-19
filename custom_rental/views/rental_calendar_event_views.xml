@@ -1,0 +1,106 @@
+<odoo>
+
+  <!-- 1️⃣ Wizard Form -->
+  <record id="view_boat_availability_wizard_form" model="ir.ui.view">
+    <field name="name">boat.availability.wizard.form</field>
+    <field name="model">boat.availability.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Ver Disponibilidad">
+        <sheet>
+          <group>
+            <field name="boat_ids" widget="many2many_tags" required="1"/>
+          </group>
+          <footer>
+            <button string="Ver Calendario" type="object" name="action_show_calendar" class="btn-primary"/>
+            <button string="Cancelar" class="btn-secondary" special="cancel"/>
+          </footer>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <!-- 2️⃣ Calendar View -->
+  <record id="view_boat_availability_calendar" model="ir.ui.view">
+    <field name="name">boat.daily.availability.calendar</field>
+    <field name="model">boat.daily.availability</field>
+    <field name="arch" type="xml">
+      <calendar
+        date_start="date"
+        date_stop="date"
+        color="color"
+        mode="month"
+        edit="0">
+        <!-- Invisibles, pero marcados como filtros -->
+        <field name="availability_state" filters="1" invisible="1"/>
+        <field name="boat_id"            filters="1" invisible="1"/>
+      </calendar>
+    </field>
+  </record>
+
+  <!-- 3️⃣ Search Base View -->
+  <record id="view_boat_availability_search" model="ir.ui.view">
+    <field name="name">boat.daily.availability.search</field>
+    <field name="model">boat.daily.availability</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="boat_id"/>
+        <field name="availability_state"/>
+        <field name="entry_type"/>
+      </search>
+    </field>
+  </record>
+
+
+  <!-- 4️⃣ Extended Search with Filters -->
+  <record id="view_boat_availability_search_ext" model="ir.ui.view">
+    <field name="name">boat.daily.availability.search.ext</field>
+    <field name="model">boat.daily.availability</field>
+    <!-- Herdamos de la base -->
+    <field name="inherit_id" ref="custom_rental.view_boat_availability_search"/>
+    <field name="arch" type="xml">
+      <xpath expr="//search" position="inside">
+        <!-- Filtros clásicos en la barra -->
+        <filter name="ft_request"   string="Solicitud"      domain="[('entry_type','=','request')]"/>
+        <filter name="ft_pending"   string="Pendiente"      domain="[('entry_type','=','pending')]"/>
+        <filter name="ft_confirmed" string="Reserva"        domain="[('entry_type','=','confirmed')]"/>
+        <filter name="ft_cancelled" string="Cancelada"      domain="[('entry_type','=','cancelled')]"/>
+        <filter name="ft_enrole"    string="Enrolé"         domain="[('entry_type','=','enrole')]"/>
+        <separator/>
+        <filter name="fs_available"   string="Disponible"        domain="[('availability_state','=','available')]"/>
+        <filter name="fs_private"     string="Uso Privado"       domain="[('availability_state','=','private')]"/>
+        <filter name="fs_maintenance" string="Mantenimiento"     domain="[('availability_state','=','maintenance')]"/>
+        <filter name="fs_blocked"     string="Bloqueo Operativo" domain="[('availability_state','=','blocked')]"/>
+        <separator/>
+        <!-- CHECKBOXES en el panel lateral -->
+        <searchpanel>
+          <divider string="Estados"/>
+          <field name="availability_state" select="multi" icon="fa-filter" string="Estado"/>
+          <divider string="Embarcaciones"/>
+          <field name="boat_id"            select="multi" icon="fa-ship"   string="Embarcación"/>
+        </searchpanel>
+      </xpath>
+    </field>
+  </record>
+
+  <record id="action_boat_availability_calendar" model="ir.actions.act_window">
+    <field name="name">Disponibilidad</field>
+    <field name="res_model">boat.daily.availability</field>
+    <field name="view_mode">calendar,search</field>
+    <field name="view_id" ref="view_boat_availability_calendar"/>
+    <field name="search_view_id" ref="custom_rental.view_boat_availability_search_ext"/>
+  </record>
+
+  <record id="action_boat_availability_wizard" model="ir.actions.act_window">
+    <field name="name">Ver Disponibilidad</field>
+    <field name="res_model">boat.availability.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <!-- 6️⃣ Menu -->
+  <menuitem id="menu_rental_availability_wizard"
+            name="Calendario Disponibilidad"
+            parent="menu_rental_availability"
+            action="action_boat_availability_wizard"
+            sequence="3"/>
+</odoo>
