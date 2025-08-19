@@ -6,22 +6,43 @@ import pytz
 
 # ---------- helpers ----------
 
-def _normalize_tz_name(user_tzname):
+def _normalize_tz_name(tz_name):
+    """
+    Normaliza nombres 'raros' de zona horaria para pytz.
+    - Acepta variantes como 'etc-gmt-6', 'Etc/GMT-6', 'etc/GMT+6', etc.
+    - Corrige el signo invertido de la familia Etc/GMT en pytz.
+    """
     import re
-    if not user_tzname:
+    if not tz_name:
         return "UTC"
-    name = str(user_tzname).strip()
+
+    name = str(tz_name).strip()
+
+    # Uniformar prefijo 'Etc/'
     if name.lower().startswith("etc/"):
         name = "Etc/" + name[4:]
     elif name.lower().startswith("etc-"):
         name = "Etc/" + name[4:]
-    m = re.search(r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$", name) or \
-        re.search(r"(?i)^GMT\s*([+-])\s*(\d+)$", name) or \
-        re.search(r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$", name)
-    if m:
-        sign, num = m.groups()
-        inv = "+" if sign == "-" else "-"
-        name = f"Etc/GMT{inv}{num}"
+
+    # Detectar familia Etc/GMT±N
+    patterns = [
+        r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$",
+        r"(?i)^GMT\s*([+-])\s*(\d+)$",
+        r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$"
+    ]
+    
+    for pattern in patterns:
+        m = re.search(pattern, name)
+        if m:
+            sign, num = m.groups()
+            # ¡IMPORTANTE! En pytz, Etc/GMT invierte el signo
+            # Etc/GMT-6 significa UTC+6 (6 horas adelante de UTC)
+            # Para Ecuador (UTC-5), necesitas Etc/GMT+5
+            inv = "+" if sign == "-" else "-"
+            name = f"Etc/GMT{inv}{num}"
+            break
+
+    # Validar contra pytz
     try:
         pytz.timezone(name)
         return name
@@ -43,14 +64,22 @@ def _hm_to_minutes(hhmm):
     return int(h) * 60 + int(m)
 
 def _to_utc_naive(date_obj, hhmm, user_tzname):
+    """Convierte fecha+hora local a UTC naive"""
     hh, mm = [int(x) for x in (hhmm or "00:00").split(":")]
     local_dt = datetime(date_obj.year, date_obj.month, date_obj.day, hh, mm, 0)
+    
+    # Normalizar y obtener timezone
     tz = pytz.timezone(_normalize_tz_name(user_tzname))
+    
     try:
         aware = tz.localize(local_dt, is_dst=None)
     except (pytz.AmbiguousTimeError, pytz.NonExistentTimeError):
-        aware = tz.localize(local_dt, is_dst=True)
-    return aware.astimezone(pytz.UTC).replace(tzinfo=None)
+        # Para Ecuador, usar is_dst=False (no hay DST)
+        aware = tz.localize(local_dt, is_dst=False)
+    
+    # Convertir a UTC
+    utc_dt = aware.astimezone(pytz.UTC)
+    return utc_dt.replace(tzinfo=None)
 
 def _to_user_tz(dt, user_tzname):
     tz = pytz.timezone(_normalize_tz_name(user_tzname))

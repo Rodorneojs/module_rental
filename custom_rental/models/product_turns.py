@@ -220,22 +220,26 @@ class ProductTemplate(models.Model):
         tz_name = self._normalize_tz_name(tz_name)
         tz = pytz.timezone(tz_name)
 
+        # Crear datetime local naive
         local_dt = datetime(y, m, d, t.hour, t.minute, 0)
+
+        # Localizar en la zona horaria correcta
         try:
             aware = tz.localize(local_dt, is_dst=None)
         except (pytz.AmbiguousTimeError, pytz.NonExistentTimeError):
-            # fuerza una elección razonable para horarios con/sin DST
-            aware = tz.localize(local_dt, is_dst=True)
-        return aware.astimezone(pytz.UTC).replace(tzinfo=None)
+            # Si hay ambigüedad con DST, usa is_dst=False para horario estándar
+            aware = tz.localize(local_dt, is_dst=False)
 
+        # Convertir a UTC y hacer naive
+        utc_dt = aware.astimezone(pytz.UTC)
+        return utc_dt.replace(tzinfo=None)
     # ---------------- utils TZ/fechas ----------------
 
-    def _normalize_tz_name(self, tz_name):
+    def _normalize_tz_name(tz_name):
         """
         Normaliza nombres 'raros' de zona horaria para pytz.
         - Acepta variantes como 'etc-gmt-6', 'Etc/GMT-6', 'etc/GMT+6', etc.
         - Corrige el signo invertido de la familia Etc/GMT en pytz.
-        Devuelve una tz válida o 'UTC' si no se reconoce.
         """
         import re
         if not tz_name:
@@ -243,25 +247,29 @@ class ProductTemplate(models.Model):
 
         name = str(tz_name).strip()
 
-        # uniformar prefijo 'Etc/'
+        # Uniformar prefijo 'Etc/'
         if name.lower().startswith("etc/"):
             name = "Etc/" + name[4:]
         elif name.lower().startswith("etc-"):
             name = "Etc/" + name[4:]
 
-        # ¿es de la familia Etc/GMT±N?
-        m = re.search(r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$", name)
-        if not m:
-            # también aceptamos 'GMT-6', 'gmt + 6', etc → lo pasamos a Etc/GMT±N
-            m = re.search(r"(?i)^GMT\s*([+-])\s*(\d+)$", name)
-        if not m:
-            m = re.search(r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$", name)
+        # Detectar familia Etc/GMT±N
+        patterns = [
+            r"(?i)^Etc/GMT\s*([+-])\s*(\d+)$",
+            r"(?i)^GMT\s*([+-])\s*(\d+)$",
+            r"(?i)^Etc[-/ ]GMT\s*([+-])\s*(\d+)$"
+        ]
 
-        if m:
-            sign, num = m.groups()
-            # ¡OJO! En pytz, Etc/GMT invierte el signo
-            inv = "+" if sign == "-" else "-"
-            name = f"Etc/GMT{inv}{num}"
+        for pattern in patterns:
+            m = re.search(pattern, name)
+            if m:
+                sign, num = m.groups()
+                # ¡IMPORTANTE! En pytz, Etc/GMT invierte el signo
+                # Etc/GMT-6 significa UTC+6 (6 horas adelante de UTC)
+                # Para Ecuador (UTC-5), necesitas Etc/GMT+5
+                inv = "+" if sign == "-" else "-"
+                name = f"Etc/GMT{inv}{num}"
+                break
 
         # Validar contra pytz
         try:
@@ -662,12 +670,29 @@ class RentalTurnBatchWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         prod = self.product_id.sudo()
+        
 
+    
         # --- helper local por si el método del ProductTemplate aún no existe ---
         def _normalize_tz_name_any(tzname):
             import re, pytz
             if not tzname:
                 return "UTC"
+            # Antes de crear las órdenes
+            # Log para debug
+            _logger.info("=== TURN WIZARD CONFIRM ===")
+            _logger.info(f"Hour from: {self.hour_from}")
+            _logger.info(f"Hour to: {self.hour_to}")
+            _logger.info(f"User TZ: {self.env.user.tz}")
+            _logger.info(f"Context TZ: {self.env.context.get('tz')}")
+        
+            _logger.info(f"Date: {iso}")
+            _logger.info(f"Start UTC: {start_dt}")
+            _logger.info(f"Stop UTC: {stop_dt}")
+            for iso in sorted(set(iso_dates)):
+                y, m, d = [int(x) for x in iso.split('-')]
+                start_dt = self._to_utc_dt(y, m, d, t_from)
+                stop_dt = self._to_utc_dt(y, m, d, t_to)
             name = str(tzname).strip()
             # uniformar prefijo Etc/
             if name.lower().startswith("etc/"):
