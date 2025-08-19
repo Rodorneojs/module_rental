@@ -1,32 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_order_form_turn_fields" model="ir.ui.view">
+    <record id="view_order_form_turn_fields_inherit" model="ir.ui.view">
         <field name="name">sale.order.turn.fields.inherit</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+        <field name="priority">20</field>
         <field name="arch" type="xml">
             
-            <!-- 1) Campos nuevos debajo del cliente -->
-            <xpath expr="//sheet//group//field[@name='partner_id']" position="after">
+            <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="x_turn_yacht_id"/>
                 <field name="x_turn_season_id"/>
             </xpath>
-            
-            <!-- 2) Ocultar SIEMPRE el campo antiguo de embarcación -->
+            <!-- 2) Ocultar el campo antiguo de embarcación (si existe en la vista base) -->
             <xpath expr="//field[@name='embarcacion_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             
-            <!-- 3) PRIMERA aparición de Start/Return:
-                 ocultar si es NUEVA (not id) **o** si proviene de Turnos (x_turn_slot) -->
+            <!-- 3) Reemplazar el PRIMER rental_start_date por un bloque “Rental Period” -->
             <xpath expr="(//field[@name='rental_start_date'])[1]" position="replace">
-                <field name="rental_start_date" invisible="not id or x_turn_slot"/>
-            </xpath>
-            <xpath expr="(//field[@name='rental_return_date'])[1]" position="replace">
-                <field name="rental_return_date" invisible="not id or x_turn_slot"/>
+                <!-- OJO: label sin 'for' para evitar error; solo estilo de rótulo -->
+                <div class="o_row" style="align-items:center;">
+                    <span class="o_form_label" style="margin-right:12px;">Rental Period</span>
+                    <field name="rental_start_date" widget="datetime" class="oe_inline" style="margin-right:8px;"/>
+                    <span class="oe_inline" style="margin:0 8px;">→</span>
+                    <field name="rental_return_date" widget="datetime" class="oe_inline"/>
+                </div>
             </xpath>
             
-            <!-- Nota: no tocamos las otras apariciones porque las usa la fila “Rental period” -->
+            <!-- 4) Eliminar el PRIMER rental_return_date original (ya lo mostramos arriba) -->
+            <xpath expr="(//field[@name='rental_return_date'])[1]" position="replace"/>
+            
         </field>
     </record>
 </odoo>

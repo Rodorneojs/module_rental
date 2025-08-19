@@ -1,41 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Ocultar controles de la lista y del kanban de líneas -->
-    <record id="sale_order_form_inherit_hide_line_links" model="ir.ui.view">
-        <field name="name">sale.order.form.inherit.hide.line.links</field>
+    <record id="sale_order_form_inherit_hide_line_controls" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.hide.line.controls</field>
         <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form"/>
+        <!-- OJO: heredar del formulario de renting -->
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
         <field name="arch" type="xml">
             
-            <!-- ======= VISTA LISTA (Order Lines) ======= -->
-            <!-- Mostrar "Agregar un producto" solo si NO viene de turnos -->
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/create[@name='add_product_control']" position="attributes">
-                <attribute name="invisible">parent.x_turn_slot</attribute>
+            <!-- Desactivar quick create en el o2m -->
+            <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="options">
+                    {
+                    'no_create': True,
+                    'no_create_edit': True,
+                    'no_quick_create': True
+                    }
+                </attribute>
             </xpath>
             
-            <!-- Ocultar SIEMPRE sección, nota y catálogo -->
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/create[@name='add_section_control']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/create[@name='add_note_control']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/list/control/button[@name='action_add_from_catalog']" position="attributes">
-                <attribute name="invisible">1</attribute>
+            <!-- Ocultar SIEMPRE los 4 enlaces nativos (lista y kanban) -->
+            <xpath expr="//field[@name='order_line']" position="after">
+                <div>
+                    <style>
+                        /* List view */
+                        .o_field_one2many[name="order_line"] .o_field_x2many_list_row_add,
+                        .o_field_one2many[name="order_line"] .o_list_add_product,
+                        .o_field_one2many[name="order_line"] .o_list_add_section,
+                        .o_field_one2many[name="order_line"] .o_list_add_note,
+                        .o_field_one2many[name="order_line"] .o_list_add_catalog,
+                        /* Kanban/Mobile */
+                        .o_field_one2many[name="order_line"] .o_kanban_header .o_cp_buttons .btn,
+                        .o_field_one2many[name="order_line"] .o_kanban_header .o_kanban_add {
+                        display: none !important;
+                        }
+                    </style>
+                </div>
             </xpath>
             
-            <!-- ======= VISTA KANBAN (móvil) ======= -->
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/create[@name='add_product_control']" position="attributes">
-                <attribute name="invisible">parent.x_turn_slot</attribute>
-            </xpath>
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/create[@name='add_section_control']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/create[@name='add_note_control']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//page[@name='order_lines']//field[@name='order_line']/kanban/control/button[@name='action_add_from_catalog']" position="attributes">
-                <attribute name="invisible">1</attribute>
+            <!-- Nuestro link “Add a product” (solo si: NO viene de turnos y NO hay líneas) -->
+            <xpath expr="//field[@name='order_line']" position="after">
+                <div invisible="x_turn_slot or order_line" class="mt-2" style="margin-left: 12px;">
+                    <!-- type="object" + clase 'oe_link' para que luzca como enlace nativo -->
+                    <button type="object"
+                            name="action_add_rental_product"
+                            string="Add a product"
+                            class="oe_link"/>
+                </div>
             </xpath>
             
         </field>
