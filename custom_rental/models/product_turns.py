@@ -42,171 +42,70 @@ class RentalBlockedPeriod(models.Model):
 
 
 # =====================================================
-# Marca en Sale Order: creado automáticamente por Turnos
+# Extensión del Modelo SaleOrder
 # =====================================================
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    x_turn_slot = fields.Boolean(
-        string="Turn Slot",
-        default=False,
-        index=True,
-        help="Orden creada automáticamente desde 'Turnos' del producto.",
-    )
-    x_turn_yacht_id = fields.Many2one(
-        "fleet.vehicle",
-        string="Embarcación Asociada",
-        help="Embarcación/vehículo vinculado al turno que originó la orden.",
-        index=True,
-    )
-    x_turn_season_id = fields.Many2one(
-        "rental.season",
-        string="Temporada (Zona)",
-        help="Temporada/Zona del turno que originó la orden.",
-        index=True,
-    )
+    x_turn_slot = fields.Boolean(string="Turn Slot", default=False, index=True)
+    x_turn_yacht_id = fields.Many2one("fleet.vehicle", string="Embarcación Asociada", index=True)
+    x_turn_season_id = fields.Many2one("rental.season", string="Temporada (Zona)", index=True)
+    
+    # Nuevo campo calculado para mostrar el período de alquiler de forma unificada
     rental_period_display = fields.Char(
         string='Rental Period',
         compute='_compute_rental_period_display',
         store=False
     )
-    # Campos para las horas por separado (si no existen)
-    rental_start_time = fields.Float(string='Start Time')
-    rental_end_time = fields.Float(string='End Time')
+
     @api.depends('rental_start_date', 'rental_return_date')
     def _compute_rental_period_display(self):
-        for record in self:
-            if record.rental_start_date and record.rental_return_date:
-                # Extraer la fecha (solo una vez)
-                start_date = record.rental_start_date.date()
-                
-                # Extraer las horas
-                start_time = record.rental_start_date.strftime('%H:%M')
-                end_time = record.rental_return_date.strftime('%H:%M')
-                
-                # Formatear como: "08/12/2025    Hora inicio: 09:00    Hora Fin: 11:00"
-                record.rental_period_display = f"{start_date.strftime('%d/%m/%Y')}    Hora inicio: {start_time}    Hora Fin: {end_time}"
+        """Crea una cadena de texto legible para el período de alquiler."""
+        for order in self:
+            if order.rental_start_date and order.rental_return_date:
+                start_date = order.rental_start_date.date()
+                start_time = order.rental_start_date.strftime('%H:%M')
+                end_time = order.rental_return_date.strftime('%H:%M')
+                order.rental_period_display = (
+                    f"{start_date.strftime('%d/%m/%Y')} | "
+                    f"Inicio: {start_time} - Fin: {end_time}"
+                )
             else:
-                record.rental_period_display = ""
-    
-    def _get_rental_start_time(self):
-        """Obtener solo la hora del campo rental_start_date"""
-        if self.rental_start_date:
-            return self.rental_start_date.hour + (self.rental_start_date.minute / 60.0)
-        return 0.0
-    
-    def _get_rental_end_time(self):
-        """Obtener solo la hora del campo rental_return_date"""
-        if self.rental_return_date:
-            return self.rental_return_date.hour + (self.rental_return_date.minute / 60.0)
-        return 0.0
+                order.rental_period_display = ""
     def action_add_rental_product(self):
-        """Abrir popup del formulario de línea con el contexto correcto para renting."""
-        self.ensure_one()
-        view = self.env.ref('sale.view_order_line_form')  # vista estándar de línea
-
-        # Contexto similar al que usa Odoo para calcular precios/tributos
-        ctx = {
-            'default_order_id': self.id,
-            'partner_id': self.partner_id.id,
-            'pricelist': self.pricelist_id.id or (self.partner_id.property_product_pricelist.id if self.partner_id else False),
-            'company_id': self.company_id.id,
-            'rental_products': True,          # <- importante para filtrar/UX renting
-            'default_is_rental': True,        # si el campo existe en líneas
-            'search_default_rent_ok': 1,      # ayuda a filtrar productos rentables
-        }
-
-        return {
-            'name': 'Add Rental Product',
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order.line',
-            'view_mode': 'form',
-            'view_id': view.id,
-            'target': 'new',
-            'context': ctx,
-        }
-    def action_add_single_product_line(self):
-        """Crea una línea vacía y enfoca el selector de producto.
-           Se oculta el link después porque ya existe una línea."""
-        self.ensure_one()
-        # No permitir en órdenes de Turnos
-        if self.x_turn_slot:
-            return {'type': 'ir.actions.client', 'tag': 'reload'}
-
-        # Si ya hay una línea “real”, no crear otra
-        if self.order_line.filtered(lambda l: not l.display_type):
-            return {'type': 'ir.actions.client', 'tag': 'reload'}
-
-        # Crear línea vacía con qty=1 (se editará inline)
-        self.env['sale.order.line'].create({
-            'order_id': self.id,
-            'product_uom_qty': 1.0,
-        })
-
-        # Recargar para que la fila aparezca editable en el o2m
-        return {'type': 'ir.actions.client', 'tag': 'reload'}
-    def action_add_rental_product(self):
-        """Abrir el popup estándar de línea (sale.order.line) filtrado a productos vendibles/arrendables.
-        Al elegir el producto, los onchanges rellenan 'name', impuestos, precio, etc.
+        """
+        Abre una ventana emergente (popup) para crear una nueva línea de pedido,
+        pre-configurada para productos de alquiler.
         """
         self.ensure_one()
-
-        # Vista de línea estándar (la de ventas funciona también con renting)
-        line_form = self.env.ref('sale.view_order_line_form')
-
-        # Dominio para el many2one de producto (vende o renta y de la compañía)
-        # El propio formulario trae sus dominios, pero pasamos un contexto coherente.
-        ctx = {
-            'default_order_id': self.id,
-            'default_product_uom_qty': 1.0,
-            # Contextos que la vista/JS de ventas usa para pricing y onchanges
-            'partner_id': self.partner_id.id,
-            'pricelist': self.pricelist_id.id or (self.partner_id.property_product_pricelist.id if hasattr(self.partner_id, 'property_product_pricelist') else False),
-            'company_id': self.company_id.id,
-            # Sugerimos que muestre productos rentables
-            'rental_products': True,
-        }
-
         return {
-            'name': _('Add product'),
+            'name': _('Agregar Producto de Alquiler'),
             'type': 'ir.actions.act_window',
             'res_model': 'sale.order.line',
             'view_mode': 'form',
-            'view_id': line_form.id,
             'target': 'new',
-            'context': ctx,
+            'context': {
+                'default_order_id': self.id,
+                'default_product_uom_qty': 1,
+                'rental_products': True,
+                'default_is_rental': True,
+            }
         }
-    @api.onchange('embarcacion_id')
-    def _onchange_embarcacion_id(self):
-        for rec in self:
-            # Si el campo no existe en este DB (módulo opcional), salir sin hacer nada
-            if 'boat_line_ids' not in rec._fields:
-                return
-            if not rec.embarcacion_id:
-                return
-
-            # --- tu lógica original, pero solo si el campo existe ---
-            if rec.boat_line_ids:
-                # ejemplo de actualización, adapta a tu modelo real
-                rec.boat_line_ids.update({'boat_id': rec.embarcacion_id.id})
-            else:
-                rec.boat_line_ids = [(0, 0, {'boat_id': rec.embarcacion_id.id})]
 
     @api.constrains('order_line')
     def _limit_single_product_line(self):
-        """Forzar que solo exista UNA línea de producto (sin contar secciones/notas)."""
+        """Restricción para permitir solo una línea de producto real por orden."""
         for order in self:
-            real_lines = order.order_line.filtered(lambda l: not l.display_type)
-            if len(real_lines) > 1:
-                # (opcional) permitir 1 sola en cualquier caso;
-                # si solo quieres limitar cuando NO sea de turnos, retira el comentario:
-                # if not order.x_turn_slot and len(real_lines) > 1:
-                raise ValidationError(_("Solo se permite un producto en la orden."))
+            if not order.x_turn_slot: # Solo aplicar para órdenes manuales
+                real_lines = order.order_line.filtered(lambda l: not l.display_type)
+                if len(real_lines) > 1:
+                    raise ValidationError(_("Solo se permite un producto en las órdenes de alquiler manuales."))
 
 # =====================================================
 # Turno parametrizado (1 fila = 1 fecha)
 # =====================================================
 class RentalTurnParamLine(models.Model):
+    # ... (sin cambios)
     _name = "rental.turn.param.line"
     _description = "Turno parametrizado por fecha"
     _order = "date"
@@ -249,8 +148,6 @@ class RentalTurnParamLine(models.Model):
             except Exception:
                 _logger.exception("Error sincronizando tras borrar líneas de turnos")
         return res
-
-
 # =====================================================
 # Product Template (parámetros + sincronías)
 # =====================================================

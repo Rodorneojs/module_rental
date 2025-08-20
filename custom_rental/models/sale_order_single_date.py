@@ -91,7 +91,7 @@ class SaleOrder(models.Model):
     def action_add_rental_product(self):
         """Abrir popup del formulario de línea con el contexto correcto para renting."""
         self.ensure_one()
-        view = self.env.ref('sale.view_order_line_form')  # vista estándar de línea
+        view = self.env.ref('product.product_product_tree_view')  # vista estándar de línea
 
         # Contexto similar al que usa Odoo para calcular precios/tributos
         ctx = {

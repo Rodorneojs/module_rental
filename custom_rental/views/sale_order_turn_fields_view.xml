@@ -11,24 +11,29 @@
                 <field name="x_turn_yacht_id"/>
                 <field name="x_turn_season_id"/>
             </xpath>
-            <!-- 2) Ocultar el campo antiguo de embarcación (si existe en la vista base) -->
+            
             <xpath expr="//field[@name='embarcacion_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             
-            <!-- 3) Reemplazar el PRIMER rental_start_date por un bloque “Rental Period” -->
-            <xpath expr="(//field[@name='rental_start_date'])[1]" position="replace">
-                <!-- OJO: label sin 'for' para evitar error; solo estilo de rótulo -->
-                <div class="o_row" style="align-items:center;">
-                    <span class="o_form_label" style="margin-right:12px;">Rental Period</span>
-                    <field name="rental_start_date" widget="datetime" class="oe_inline" style="margin-right:8px;"/>
-                    <span class="oe_inline" style="margin:0 8px;">→</span>
+            <xpath expr="//label[@for='duration_days']" position="before">
+                <label for="rental_period_display" string="Rental Period" invisible="not x_turn_slot"/>
+                <div invisible="not x_turn_slot">
+                    <field name="rental_period_display"/>
+                </div>
+                
+                <label for="rental_start_date" string="Rental Period" invisible="x_turn_slot"/>
+                <div class="o_row" invisible="x_turn_slot">
+                    <field name="rental_start_date" widget="datetime" class="oe_inline" style="margin-right: 16px;"/>
+                    <span class="oe_inline" style="margin: 0 8px;">→</span>
                     <field name="rental_return_date" widget="datetime" class="oe_inline"/>
                 </div>
             </xpath>
             
-            <!-- 4) Eliminar el PRIMER rental_return_date original (ya lo mostramos arriba) -->
-            <xpath expr="(//field[@name='rental_return_date'])[1]" position="replace"/>
+            <xpath expr="//field[@name='rental_start_date']" position="replace"/>
+            <xpath expr="//field[@name='rental_return_date']" position="replace"/>
+            <xpath expr="//label[@for='duration_days']" position="replace"/>
+            <xpath expr="//div[hasclass('o_row')][.//field[@name='duration_days']]" position="replace"/>
             
         </field>
     </record>
