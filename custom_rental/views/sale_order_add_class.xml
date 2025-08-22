@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Herencia de la vista principal de Renting -->
+        <record id="view_order_form_add_class" model="ir.ui.view">
+            <field name="name">sale.order.form.add.class.kumbra</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//sheet" position="attributes">
+                    <attribute name="class" add="oe-hide-rental-period"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

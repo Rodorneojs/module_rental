@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_product_picker_wizard_form" model="ir.ui.view">
+        <field name="name">rental.product.picker.wizard.form</field>
+        <field name="model">rental.product.picker.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Seleccionar producto" class="o_form_nosheet">
+                <group>
+                    <field name="order_id" invisible="1"/>
+                    <!-- Permitimos Search More y crear nuevo -->
+                    <field name="product_id"
+                           options="{'no_create': false, 'no_create_edit': false}"
+                           context="{'search_default_rent_ok': 1}"/>
+                </group>
+                <footer>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Agregar" type="object" name="action_confirm" class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -24,65 +24,53 @@ class RentalCalendarDate(models.Model):
     _name = "rental.calendar.date"
     _description = "Fecha disponible de producto"
     _order = "date"
-
     product_id = fields.Many2one("product.template", required=True, ondelete="cascade")
     date = fields.Date(required=True, index=True)
+    _sql_constraints = [("product_date_uniq", "unique(product_id, date)", "La fecha ya existe para este producto.")]
 
-    _sql_constraints = [
-        ("product_date_uniq", "unique(product_id, date)", "La fecha ya existe para este producto."),
-    ]
 
 
 # =====================================================
-# Bloqueos extendidos (marcamos los creados desde Turnos)
-# =====================================================
-class RentalBlockedPeriod(models.Model):
-    _inherit = "rental.blocked.period"
-    turn_block = fields.Boolean(default=False, index=True)
-
-
-# =====================================================
-# Extensión del Modelo SaleOrder
+# Extensión del Modelo SaleOrder (versión simplificada y unificada)
 # =====================================================
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
-    x_turn_slot = fields.Boolean(string="Turn Slot", default=False, index=True)
-    x_turn_yacht_id = fields.Many2one("fleet.vehicle", string="Embarcación Asociada", index=True)
-    x_turn_season_id = fields.Many2one("rental.season", string="Temporada (Zona)", index=True)
-    
-    # Nuevo campo calculado para mostrar el período de alquiler de forma unificada
-    rental_period_display = fields.Char(
-        string='Rental Period',
-        compute='_compute_rental_period_display',
-        store=False
+    x_turn_slot = fields.Boolean(
+        string="Turn Slot", default=False, index=True,
+        help="Orden creada automáticamente desde 'Turnos' del producto.",
     )
+    x_turn_yacht_id = fields.Many2one(
+        "fleet.vehicle", string="Embarcación Asociada",
+        help="Embarcación/vehículo vinculado al turno que originó la orden.", index=True,
+    )
+    x_turn_season_id = fields.Many2one(
+        "rental.season", string="Temporada (Zona)",
+        help="Temporada/Zona del turno que originó la orden.", index=True,
+    )
+    
+    # ELIMINAMOS el campo 'rental_period_display' y su método.
+    # La vista ahora usará los campos de fecha estándar directamente.
 
-    @api.depends('rental_start_date', 'rental_return_date')
-    def _compute_rental_period_display(self):
-        """Crea una cadena de texto legible para el período de alquiler."""
-        for order in self:
-            if order.rental_start_date and order.rental_return_date:
-                start_date = order.rental_start_date.date()
-                start_time = order.rental_start_date.strftime('%H:%M')
-                end_time = order.rental_return_date.strftime('%H:%M')
-                order.rental_period_display = (
-                    f"{start_date.strftime('%d/%m/%Y')} | "
-                    f"Inicio: {start_time} - Fin: {end_time}"
-                )
-            else:
-                order.rental_period_display = ""
     def action_add_rental_product(self):
         """
-        Abre una ventana emergente (popup) para crear una nueva línea de pedido,
-        pre-configurada para productos de alquiler.
+        Abre una ventana emergente para crear una nueva línea de pedido,
+        utilizando la vista de formulario específica del módulo de alquiler.
         """
         self.ensure_one()
+        try:
+            # Apuntamos a la vista correcta del módulo de renting
+            view_id = self.env.ref('sale_renting.rental_order_line_view_form').id
+        except ValueError:
+            # Si no existe, usamos la de ventas como alternativa
+            view_id = self.env.ref('sale.view_order_line_form').id
+
         return {
             'name': _('Agregar Producto de Alquiler'),
             'type': 'ir.actions.act_window',
             'res_model': 'sale.order.line',
             'view_mode': 'form',
+            'view_id': view_id,
             'target': 'new',
             'context': {
                 'default_order_id': self.id,
@@ -96,17 +84,20 @@ class SaleOrder(models.Model):
     def _limit_single_product_line(self):
         """Restricción para permitir solo una línea de producto real por orden."""
         for order in self:
-            if not order.x_turn_slot: # Solo aplicar para órdenes manuales
+            # Solo aplicamos esta restricción a órdenes manuales, no a las de turnos
+            if not order.x_turn_slot:
                 real_lines = order.order_line.filtered(lambda l: not l.display_type)
                 if len(real_lines) > 1:
-                    raise ValidationError(_("Solo se permite un producto en las órdenes de alquiler manuales."))
-
+                    raise ValidationError(_("Solo se permite un producto por orden de alquiler manual."))
+class RentalBlockedPeriod(models.Model):
+    _inherit = "rental.blocked.period"
+    turn_block = fields.Boolean(default=False, index=True)
 # =====================================================
 # Turno parametrizado (1 fila = 1 fecha)
 # =====================================================
 class RentalTurnParamLine(models.Model):
-    # ... (sin cambios)
     _name = "rental.turn.param.line"
+    # ... (código completo de esta clase)
     _description = "Turno parametrizado por fecha"
     _order = "date"
 
@@ -153,7 +144,7 @@ class RentalTurnParamLine(models.Model):
 # =====================================================
 class ProductTemplate(models.Model):
     _inherit = "product.template"
-
+    # ... (código completo de esta clase)
     turn_param_line_ids = fields.One2many("rental.turn.param.line", "product_id", string="Parámetros")
     turn_yacht_id = fields.Many2one("fleet.vehicle", string="Embarcación")
     nav_season_id = fields.Many2one("rental.season", string="Temporada (Zona)")

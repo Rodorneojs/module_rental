@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista heredada para permitir archivados en el campo Customer -->
+    <record id="view_rental_order_form_inherit_partner" model="ir.ui.view">
+        <field name="name">rental.order.form.inherit.public.partner</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <!-- Mostrar archivados en el dropdown -->
+                <attribute name="context">{'active_test': False}</attribute>
+            </xpath>
+        </field>
+    </record>
+    <!-- Modificación del action para poner Public User como default -->
+    <record id="sale_renting.rental_order_action" model="ir.actions.act_window">
+        <field name="context" eval="{'default_partner_id': ref('base.public_partner')}"/>
+    </record>
+</odoo>

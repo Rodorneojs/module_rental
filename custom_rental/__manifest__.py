@@ -1,6 +1,6 @@
 {
     'name': 'KUMBRA Disponibilidad de Alquiler',
-    'version': '18.0.1.3',
+    'version': '18.0.1.4',
     'category': 'Rental',
     'summary': 'Disponibilidad para Alquiler de Embarcaciones',
     'author': 'Renkar',
@@ -11,6 +11,9 @@
             'custom_rental/static/src/css/range_planner.css',
             'custom_rental/static/src/xml/range_planner_field.xml',
             'custom_rental/static/src/css/turns_view.css',
+            'custom_rental/static/src/css/rental_turn.css',
+            'custom_rental/static/src/scss/schedule_statusbar.scss',
+            'custom_rental/static/src/scss/hide_rental_dates.scss',
         ],
         'web.assets_qweb': [
             'custom_rental/static/src/xml/range_planner_field.xml',
@@ -18,6 +21,7 @@
     },
     'data': [
         'security/ir.model.access.csv',
+        'views/order_views.xml',
         'views/rental_availability_views.xml',
         'views/rental_blocked_period_views.xml',
         'views/block_period_range_wizard_views.xml',
@@ -26,10 +30,14 @@
         'views/product_turns_view.xml',
         'views/product_general_views.xml',
         'views/res_config_settings_views.xml',
-        'views/sale_order_rental_dates.xml',
+        # Turnos & schedules
         'views/sale_order_turn_fields_view.xml',
         'views/sale_order_line_controls_view.xml',
-
+        'views/sale_order_schedule_relaxed.xml',
+        'views/product_picker_wizard.xml',
+        'views/sale_order_schedule_state_view.xml',
+        'views/rental_order_partner_default.xml',
+        'views/sale_order_add_class.xml',
     ],
     'installable': True,
     'application': False,

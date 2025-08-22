@@ -1,40 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_order_form_turn_fields_inherit" model="ir.ui.view">
-        <field name="name">sale.order.turn.fields.inherit</field>
+
+    <!-- Orden de venta: cabecera limpia estilo Kumbra -->
+    <record id="view_order_form_turn_fields_horizontal" model="ir.ui.view">
+        <field name="name">sale.order.turn.fields.horizontal</field>
         <field name="model">sale.order</field>
+        <!-- Heredamos la vista de Renting -->
         <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
-        <field name="priority">20</field>
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             
             <xpath expr="//field[@name='partner_id']" position="after">
-                <field name="x_turn_yacht_id"/>
-                <field name="x_turn_season_id"/>
+                <field name="x_turn_yacht_id" readonly="x_turn_slot == True"/>
+                <field name="x_turn_season_id" readonly="x_turn_slot == True"/>
             </xpath>
             
-            <xpath expr="//field[@name='embarcacion_id']" position="attributes">
+            <xpath expr="//field[@name='x_turn_season_id']" position="after">
+                <field name="x_schedule_state" string="Schedule State"/>
+            </xpath>
+            
+            <xpath expr="//field[@name='embarcacion_id']" position="replace"/>
+            
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <label for="x_turn_date" string="Rental Period"/>
+                <div class="o_row">
+                    <field name="x_turn_date" nolabel="1" class="oe_inline"/>
+                    <label for="x_turn_hour_from" string="Hora Inicio:" class="oe_inline mx-1 fw-bold"/>
+                    <field name="x_turn_hour_from" widget="float_time" nolabel="1" class="oe_inline"/>
+                    <label for="x_turn_hour_to" string="Hora Fin:" class="oe_inline mx-1 fw-bold"/>
+                    <field name="x_turn_hour_to" widget="float_time" nolabel="1" class="oe_inline"/>
+                </div>
+            </xpath>
+
+            <!-- Ocultar los campos -->
+            <xpath expr="//field[@name='rental_start_date']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            
-            <xpath expr="//label[@for='duration_days']" position="before">
-                <label for="rental_period_display" string="Rental Period" invisible="not x_turn_slot"/>
-                <div invisible="not x_turn_slot">
-                    <field name="rental_period_display"/>
-                </div>
-                
-                <label for="rental_start_date" string="Rental Period" invisible="x_turn_slot"/>
-                <div class="o_row" invisible="x_turn_slot">
-                    <field name="rental_start_date" widget="datetime" class="oe_inline" style="margin-right: 16px;"/>
-                    <span class="oe_inline" style="margin: 0 8px;">→</span>
-                    <field name="rental_return_date" widget="datetime" class="oe_inline"/>
-                </div>
+            <xpath expr="//field[@name='rental_return_date']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
-            
-            <xpath expr="//field[@name='rental_start_date']" position="replace"/>
-            <xpath expr="//field[@name='rental_return_date']" position="replace"/>
-            <xpath expr="//label[@for='duration_days']" position="replace"/>
-            <xpath expr="//div[hasclass('o_row')][.//field[@name='duration_days']]" position="replace"/>
-            
         </field>
     </record>
 </odoo>

@@ -10,7 +10,19 @@ from . import rental_calendar_wizard
 from . import product_template
 from . import image_product
 from . import res_config_settings
-from . import product_turns
+
+# nuevos / refactor
+from . import turn_calendar
+from . import rental_blocked_period_ext
+from . import sale_order_ext
 from . import sale_order_single_date
+from . import sale_order_line_ext
+from . import turn_param_line
+from . import product_template_turns
+from . import sale_order_schedule_state
+from . import boat_daily_availability
+
+#mods
+from . import turn_cascade
 
 

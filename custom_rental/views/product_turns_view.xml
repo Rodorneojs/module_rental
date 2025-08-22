@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
+    <!-- Lista simple para rental.calendar.date (intacta) -->
     <record id="view_rental_calendar_date_list" model="ir.ui.view">
         <field name="name">rental.calendar.date.list</field>
         <field name="model">rental.calendar.date</field>
@@ -20,6 +21,7 @@
         <field name="context">{'default_product_id': active_id}</field>
     </record>
     
+    <!-- Pestaña "Turnos" en product.template -->
     <record id="view_product_template_turns" model="ir.ui.view">
         <field name="name">product.template.turns.tab</field>
         <field name="model">product.template</field>
@@ -39,22 +41,20 @@
                             <field name="yacht_id"/>
                             <field name="season_id"/>
                             <field name="date"/>
-                            <field name="hour_from"/>
-                            <field name="hour_to"/>
-                            <field name="status" readonly="1"/>
+                            <field name="hour_from" widget="float_time"/>
+                            <field name="hour_to" widget="float_time"/>
                             <field name="quota"/>
                             <button name="unlink" type="object" icon="fa-trash"
-                                confirm="¿Deseas eliminar el registro?"
-                                title="Eliminar"/>
+                                    confirm="¿Deseas eliminar el registro?"
+                                    title="Eliminar"/>
                         </list>
                         <form string="Turno" create="false" edit="false">
                             <group>
                                 <field name="yacht_id" readonly="1"/>
                                 <field name="season_id" readonly="1"/>
                                 <field name="date" readonly="1"/>
-                                <field name="hour_from" readonly="1"/>
-                                <field name="hour_to" readonly="1"/>
-                                <field name="status" readonly="1"/>
+                                <field name="hour_from" readonly="1" widget="float_time"/>
+                                <field name="hour_to" readonly="1" widget="float_time"/>
                                 <field name="quota" readonly="1"/>
                             </group>
                         </form>
@@ -64,7 +64,8 @@
                         <button string="Crear nuevos turnos"
                                 name="action_open_turn_batch_wizard"
                                 type="object"
-                                class="btn-primary"/>
+                                class="btn-primary"
+                                context="{'default_hour_from': 8.0, 'default_hour_to': 18.0}"/>
                     </div>
                     
                 </page>
@@ -72,6 +73,7 @@
         </field>
     </record>
     
+    <!-- Form del wizard -->
     <record id="view_rental_turn_batch_wizard_form" model="ir.ui.view">
         <field name="name">rental.turn.batch.wizard.form</field>
         <field name="model">rental.turn.batch.wizard</field>
@@ -83,12 +85,13 @@
                             <field name="product_id" readonly="1"/>
                             <field name="yacht_id"/>
                             <field name="season_id"/>
-                            <field name="hour_from"/>
-                            <field name="hour_to"/>
-                            <field name="status"/>
+                            <!-- Campos Float con widget de hora -->
+                            <field name="hour_from" widget="float_time"/>
+                            <field name="hour_to" widget="float_time"/>
                             <field name="quota"/>
                         </group>
                         <group>
+                            <!-- Campo auxiliar, se mantiene oculto -->
                             <field name="line_ids" nolabel="1" invisible="1">
                                 <list create="false" delete="true" editable="bottom">
                                     <field name="date"/>
@@ -97,8 +100,13 @@
                         </group>
                     </group>
                     
+                    <!-- NUEVO: json con fechas bloqueadas para el widget -->
+                    <field name="disabled_dates_json" invisible="1"/>
+                    
                     <group string="Calendario selección multiples fechas">
-                        <field name="wizard_available_dates" widget="range_planner" nolabel="1"/>
+                        <field name="wizard_available_dates"
+                               widget="range_planner"
+                               nolabel="1"/>
                     </group>
                 </sheet>
                 <footer>

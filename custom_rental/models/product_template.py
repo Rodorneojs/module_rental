@@ -21,15 +21,10 @@ class ProductTemplate(models.Model):
         string="Zone",
         ondelete='restrict',
         index=True,
+        required=False,
     )
     featured         = fields.Boolean(string="Featured products?")
-    provider_sel = fields.Selection(
-        [
-            ("seavices",       "SEAVICES"),
-            ("sail_and_charter","Sail & Charter"),
-        ],
-        string="Provider",
-    )
+    provider_sel = fields.Char(string="Provider", required=False)
     currency_id      = fields.Many2one(
                          "res.currency",
                          string="Currency",

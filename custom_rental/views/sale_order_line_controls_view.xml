@@ -3,32 +3,26 @@
     <record id="sale_order_form_inherit_hide_line_controls" model="ir.ui.view">
         <field name="name">sale.order.form.inherit.hide.line.controls</field>
         <field name="model">sale.order</field>
-        <!-- OJO: heredar del formulario de renting -->
         <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
         <field name="arch" type="xml">
             
-            <!-- Desactivar quick create en el o2m -->
+            <!-- Desactivar quick create en el o2m (JSON válido + create="0") -->
             <xpath expr="//field[@name='order_line']" position="attributes">
+                <attribute name="create">0</attribute>
                 <attribute name="options">
-                    {
-                    'no_create': True,
-                    'no_create_edit': True,
-                    'no_quick_create': True
-                    }
+                    {"no_create": true, "no_create_edit": true, "no_quick_create": true}
                 </attribute>
             </xpath>
             
-            <!-- Ocultar SIEMPRE los 4 enlaces nativos (lista y kanban) -->
+            <!-- (Opcional) Ocultar enlaces nativos -->
             <xpath expr="//field[@name='order_line']" position="after">
                 <div>
                     <style>
-                        /* List view */
                         .o_field_one2many[name="order_line"] .o_field_x2many_list_row_add,
                         .o_field_one2many[name="order_line"] .o_list_add_product,
                         .o_field_one2many[name="order_line"] .o_list_add_section,
                         .o_field_one2many[name="order_line"] .o_list_add_note,
                         .o_field_one2many[name="order_line"] .o_list_add_catalog,
-                        /* Kanban/Mobile */
                         .o_field_one2many[name="order_line"] .o_kanban_header .o_cp_buttons .btn,
                         .o_field_one2many[name="order_line"] .o_kanban_header .o_kanban_add {
                         display: none !important;
@@ -37,10 +31,9 @@
                 </div>
             </xpath>
             
-            <!-- Nuestro link “Add a product” (solo si: NO viene de turnos y NO hay líneas) -->
+            <!-- Nuestro link Add a product (muestra cuando no hay líneas y no es turno) -->
             <xpath expr="//field[@name='order_line']" position="after">
                 <div invisible="x_turn_slot or order_line" class="mt-2" style="margin-left: 12px;">
-                    <!-- type="object" + clase 'oe_link' para que luzca como enlace nativo -->
                     <button type="object"
                             name="action_add_rental_product"
                             string="Add a product"

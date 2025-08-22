@@ -1,0 +1,6 @@
+/* static/src/scss/schedule_statusbar.scss */
+.o_form_view .kr-schedule-inline {
+  display: inline-flex;
+  margin-left: 12px;          /* separarlo del statusbar de state */
+  vertical-align: middle;
+}

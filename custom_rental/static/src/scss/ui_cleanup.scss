@@ -1,0 +1,4 @@
+/* Ocultar la sublínea (gris) bajo el producto en las líneas del pedido */
+.o_form_view .o_field_one2many .o_list_view .o_list_many2one_secondary {
+  display: none !important;
+}

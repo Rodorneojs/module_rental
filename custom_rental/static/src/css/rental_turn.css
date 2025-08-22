@@ -1,0 +1,36 @@
+/* ===== Fila de Período de Alquiler Compacta y Alineada ===== */
+
+/* 1. Usamos Flexbox para el contenedor principal */
+.kr-rental-period-row {
+  display: flex;       /* Activa el modo Flexbox */
+  flex-wrap: nowrap;   /* Evita que los elementos salten a la siguiente línea */
+  align-items: baseline; /* Alinea los textos y campos por su base */
+  gap: 4px;            /* Un pequeño espacio entre cada elemento */
+}
+
+/* 2. Hacemos que las etiquetas no ocupen espacio extra */
+.kr-rental-period-row > label {
+  white-space: nowrap; /* Evita que el texto de la etiqueta se parta en dos líneas */
+  font-weight: bold;
+  margin-bottom: 0;
+}
+
+/* 3. Controlamos el ancho de los campos de fecha y hora */
+.kr-rental-period-row .o_field_widget[name="x_turn_date"] {
+  min-width: 110px; /* Ancho para la fecha */
+  flex-shrink: 0;
+}
+.kr-rental-period-row .o_field_widget[name="x_turn_hour_from"],
+.kr-rental-period-row .o_field_widget[name="x_turn_hour_to"] {
+  min-width: 80px; /* Ancho para las horas */
+  flex-shrink: 0;
+}
+
+/* 4. Ocultamos los campos de fecha de alquiler nativos para evitar duplicados */
+.o_form_view .o_group .o_row:has(field[name="rental_start_date"]),
+.o_form_view .o_group .o_row:has(field[name="rental_return_date"]),
+.o_form_view label[for="rental_start_date"],
+.o_form_view label[for="rental_return_date"],
+.o_form_view label[for="duration_days"] {
+  display: none !important;
+}

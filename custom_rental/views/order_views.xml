@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Oculta el statusbar nativo de Rental en la ficha de sale.order -->
+    <record id="view_order_form_hide_rental_status" model="ir.ui.view">
+        <field name="name">sale.order.hide.rental.statusbar</field>
+        <field name="model">sale.order</field>
+        <!-- heredamos la vista principal de Rental -->
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+        <field name="priority">120</field>
+        <field name="arch" type="xml">
+            <!-- Algunos builds lo llaman rental_status, otros rental_state; cubrimos ambos -->
+            <xpath expr="//header//field[@name='state'] | //header//field[@name='rental_state']" position="replace"/>
+        </field>
+    </record>
+</odoo>

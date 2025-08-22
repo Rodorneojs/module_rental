@@ -1,0 +1,7 @@
+/* Oculta los campos nativos de renting (opcional) */
+.o_form_view [name="rental_start_date"],
+.o_form_view [name="rental_return_date"],
+.o_form_view label[for="rental_start_date"],
+.o_form_view label[for="rental_return_date"] {
+  display: none !important;
+}

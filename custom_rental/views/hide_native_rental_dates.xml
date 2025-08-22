@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- PRIMARY form de Rental (Odoo 18) -->
+    <record id="view_order_form_hide_rental_dates_primary" model="ir.ui.view">
+        <field name="name">sale.order.form.hide.rental.dates.primary</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+        <!-- prioridad alta para ganar a otras herencias -->
+        <field name="priority">2000</field>
+        <field name="arch" type="xml">
+            <!-- Eliminar los campos nativos -->
+            <!-- Ocultar los campos -->
+            <xpath expr="//field[@name='rental_start_date']" position="replace"/>
+            <xpath expr="//field[@name='rental_return_date']" position="replace"/>
+        </field>
+    </record>
+    
+    <!-- SECUNDARIA (algunas instalaciones alternan a otra vista) -->
+    <record id="view_order_form_hide_rental_dates_secondary" model="ir.ui.view">
+        <field name="name">sale.order.form.hide.rental.dates.secondary</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="priority">2000</field>
+        <field name="arch" type="xml">
+            <!-- Ocultar los campos -->
+            <xpath expr="//field[@name='rental_start_date']" position="replace"/>
+            <xpath expr="//field[@name='rental_return_date']" position="replace"/>
+        </field>
+    </record>
+</odoo>

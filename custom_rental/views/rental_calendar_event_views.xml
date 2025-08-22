@@ -45,7 +45,7 @@
       <search>
         <field name="boat_id"/>
         <field name="availability_state"/>
-        <field name="entry_type"/>
+        <!--<field name="entry_type"/> -->
       </search>
     </field>
   </record>

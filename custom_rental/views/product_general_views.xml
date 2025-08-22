@@ -11,14 +11,15 @@
             <separator string="General" colspan="4"/>          
             <!-- Fila 1: Title / Zone -->
             <group col="2">
-              <field name="title"    required="1"/>
-              <field name="zone_id" required="1"
+              <field name="title" required="1"/>
+              <field name="zone_id"
                      options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
             </group>
             <!-- Fila 2: Featured / Provider / Currency -->
             <group col="3">
               <field name="featured"/>
-              <field name="provider_sel" required="1"/>
+              <!-- usar el nuevo campo Char -->
+              <field name="provider_sel"/> 
               <field name="currency_id" required="1"/>
             </group>
             <!-- Fila 3: Active/Status / Publish in Web -->
@@ -42,28 +43,28 @@
             </group>
             <!-- Separator del segmento Type -->
             <separator string="Type" colspan="4"/>
-
+            
             <!-- Selector principal -->
             <group colspan="4">
-                <field name="type_activity" required="1"/>
+              <field name="type_activity" required="1"/>
             </group>
-
+            
             <!-- Bloque FULLBOAT -->
             <group colspan="4" invisible="type_activity != 'fullboat'">
-                <!-- Título -->
-                <div class="o_form_label" colspan="4">FULLBOAT</div>
-
-                <!-- Per hour / Vacation -->
-                <group colspan="4">
+              <!-- Título -->
+              <div class="o_form_label" colspan="4">FULLBOAT</div>
+              
+              <!-- Per hour / Vacation -->
+              <group colspan="4">
                 <field name="fullboat_mode" widget="radio" required="1"/>
-                </group>
-
-                <!-- Per hour -->
-                <group colspan="4" invisible="fullboat_mode != 'per_hour'">
+              </group>
+              
+              <!-- Per hour -->
+              <group colspan="4" invisible="fullboat_mode != 'per_hour'">
                 <!-- Subtítulo -->
                 <div class="o_section_subtitle" colspan="4">Select the times</div>
                 <group class="o_group_horizontal" colspan="4">
-                    <group>
+                  <group>
                     <field name="time_30m" widget="boolean_button"/>
                     <field name="time_1h"  widget="boolean_button"/>
                     <field name="time_2h"  widget="boolean_button"/>
@@ -73,84 +74,84 @@
                     <field name="time_6h"  widget="boolean_button"/>
                     <field name="time_fullday" widget="boolean_button"/>
                     <!-- Por cada boolean_button, la etiqueta se añade automáticamente -->
-                    </group>
-                    <!-- Repite para time_1h, time_2h… -->
+                  </group>
+                  <!-- Repite para time_1h, time_2h… -->
                 </group>
-                </group>
-
-                <!-- Multi-day -->
-                <group colspan="4" invisible="fullboat_mode != 'multi_day'">
+              </group>
+              
+              <!-- Multi-day -->
+              <group colspan="4" invisible="fullboat_mode != 'multi_day'">
                 <field name="min_days"/>
                 <field name="max_days"/>
-                </group>
+              </group>
             </group>
-
+            
             <!-- Bloque TICKET -->
             <group colspan="4" invisible="type_activity != 'ticket'">
-                <div class="o_form_label" colspan="4">TICKET</div>
-                <!-- Fila de cuatro columnas: First–Fourth shift -->
-                <group col="4">
-                    <field name="first_shift"   widget="float_time"/>
-                    <field name="second_shift"  widget="float_time"/>
-                    <field name="third_shift"   widget="float_time"/>
-                    <field name="fourth_shift"  widget="float_time"/>
-                </group>
-                <group col="4">
-                    <field name="fifth_shift"   widget="float_time"/>
-                    <field name="sixth_shift"   widget="float_time"/>
-                    <field name="seventh_shift" widget="float_time"/>
-                    <field name="eighth_shift"  widget="float_time"/>
-                </group>
+              <div class="o_form_label" colspan="4">TICKET</div>
+              <!-- Fila de cuatro columnas: First–Fourth shift -->
+              <group col="4">
+                <field name="first_shift"   widget="float_time"/>
+                <field name="second_shift"  widget="float_time"/>
+                <field name="third_shift"   widget="float_time"/>
+                <field name="fourth_shift"  widget="float_time"/>
+              </group>
+              <group col="4">
+                <field name="fifth_shift"   widget="float_time"/>
+                <field name="sixth_shift"   widget="float_time"/>
+                <field name="seventh_shift" widget="float_time"/>
+                <field name="eighth_shift"  widget="float_time"/>
+              </group>
             </group>
-
+            
             <!-- 2) Nuevo separador para Image Gallery -->
             <separator string="Image Gallery" colspan="4"/>
             <group colspan="4">
-                <!-- 3) Campo One2many incrustado -->
-                <field name="image_gallery_ids" nolabel="1">
-                    <!-- 4) Lista editable -->
-                    <list editable="bottom" string="Gallery">
-                        <field name="sequence" widget="handle"/>
-                        <field name="image" widget="image" options="{'preview_image':'image'}"/>
-                        <field name="name" string="Title"/>
-                        <field name="is_default"/>
-                        <!-- 5) Botón eliminar inline -->
-                        <button name="unlink" type="object" icon="fa-trash" class="btn-sm"
-                                title="Remove Image"
-                                attrs="{'invisible': [('id', '=', False)]}"/>
-                    </list>
-                    <!-- 6) Formulario para editar cada imagen -->
-                    <form string="Image">
-                        <sheet>
-                            <group>
-                                <field name="sequence"/>
-                                <field name="image" widget="image" options="{'preview_image':'image'}"/>
-                                <field name="name"/>
-                                <field name="is_default"/>
-                            </group>
-                        </sheet>
-                    </form>
-                </field>
+              <!-- 3) Campo One2many incrustado -->
+              <field name="image_gallery_ids" nolabel="1">
+                <!-- 4) Lista editable -->
+                <list editable="bottom" string="Gallery">
+                  <field name="sequence" widget="handle"/>
+                  <field name="image" widget="image" options="{'preview_image':'image'}"/>
+                  <field name="name" string="Title"/>
+                  <field name="is_default"/>
+                  <!-- 5) Botón eliminar inline -->
+                  <button name="unlink" type="object" icon="fa-trash" class="btn-sm"
+                          title="Remove Image"
+                          attrs="{'invisible': [('id', '=', False)]}"/>
+                </list>
+                <!-- 6) Formulario para editar cada imagen -->
+                <form string="Image">
+                  <sheet>
+                    <group>
+                      <field name="sequence"/>
+                      <field name="image" widget="image" options="{'preview_image':'image'}"/>
+                      <field name="name"/>
+                      <field name="is_default"/>
+                    </group>
+                  </sheet>
+                </form>
+              </field>
             </group>
-
+            
             <separator string="Seo Metas" colspan="4"/>
             <group col="4">
-                <field name="url_seo"          class="o_full_width"/>
-                <field name="seo_title"        class="o_full_width"/>
-                <field name="meta_description" class="o_full_width"/>
-                <field name="meta_keywords"    class="o_full_width"/>
+              <field name="url_seo"          class="o_full_width"/>
+              <field name="seo_title"        class="o_full_width"/>
+              <field name="meta_description" class="o_full_width"/>
+              <field name="meta_keywords"    class="o_full_width"/>
             </group>
-
+            
             <separator string="Texts" colspan="4"/>
             <group colspan="4">
-                <field name="resume_text"           widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
-                <field name="description_text"      widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
-                <field name="cancel_condition_text" widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
-                <field name="general_condition_text" widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
-                <field name="collection_point_text" widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
-                <field name="important_info_text"   widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
+              <field name="resume_text"           widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
+              <field name="description_text"      widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
+              <field name="cancel_condition_text" widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
+              <field name="general_condition_text" widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
+              <field name="collection_point_text" widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
+              <field name="important_info_text"   widget="html" class="o_full_width" options="{'height': 200}" placeholder="Text"/>
             </group>
-
+            
           </group>
         </page>
       </xpath>
