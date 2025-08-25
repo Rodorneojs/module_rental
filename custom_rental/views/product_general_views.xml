@@ -11,15 +11,14 @@
             <separator string="General" colspan="4"/>          
             <!-- Fila 1: Title / Zone -->
             <group col="2">
-              <field name="title" required="1"/>
-              <field name="zone_id"
+              <field name="title"    required="1"/>
+              <field name="zone_id" required="0"
                      options="{'no_create': True, 'no_create_edit': True, 'no_open': True}"/>
             </group>
             <!-- Fila 2: Featured / Provider / Currency -->
             <group col="3">
               <field name="featured"/>
-              <!-- usar el nuevo campo Char -->
-              <field name="provider_sel"/> 
+              <field name="provider_sel" required="0"/>
               <field name="currency_id" required="1"/>
             </group>
             <!-- Fila 3: Active/Status / Publish in Web -->

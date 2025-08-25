@@ -39,10 +39,11 @@
         <field name="view_mode">gantt,list,form</field>
         <field name="view_id" ref="view_sale_order_line_gantt_turn_relaxed"/>
         <field name="domain">[
-            ('x_is_rental_any','=',True),
+            ('display_type','=',False),
             ('x_sched_start','!=',False),
             ('x_sched_stop','!=',False),
-            ('order_id.state','!=','cancel')
+            ('order_id.state','!=','cancel'),
+            '|',('product_id.rent_ok','=',True),('order_id.is_rental_order','=',True)
             ]</field>
         <field name="context">{'search_default_groupby_product_id': 1}</field>
     </record>
