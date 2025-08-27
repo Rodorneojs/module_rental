@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- IMPORTANTE: noupdate="0" para que actualice un registro de otro módulo -->
+    <record id="sale_renting.rental_order_action" model="ir.actions.act_window">
+        <!-- Pon la lista primero, luego kanban -->
+        <field name="view_mode">list,kanban,form,pivot,graph,calendar,activity</field>
+        <!-- (Opcional pero recomendable) fija el view_id al tree -->
+        <field name="view_id" ref="sale_renting.rental_order_view_tree"/>
+    </record>
+</odoo>

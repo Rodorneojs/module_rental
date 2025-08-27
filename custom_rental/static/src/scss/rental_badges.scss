@@ -1,0 +1,40 @@
+
+/* El contenedor del kanban se vuelve posicionable */
+.o_kanban_record.cr-has-badges { position: relative; }
+
+/* Caja de tus badges: bottom-right */
+.cr-badges-br {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 1;
+  pointer-events: none; /* la card sigue siendo clickeable completa */
+}
+.cr-badges-br .o_tag { pointer-events: auto; } /* si luego quieres que el badge sea clickeable */
+
+.cr-schedule-badges {
+  gap: 6px;                 /* separa chips */
+  align-items: center;
+  flex-wrap: wrap;          /* si hay muchas, bajan a segunda línea sin romper */
+}
+.cr-schedule-badges .o_tag {
+  white-space: nowrap;      /* <- evita "Availab\nle" */
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.05) inset;
+}
+/* Paleta por estado (cámbiala a tu gusto) */
+.o_tag.state-available  { background:#e8f7f0 !important; border-color:#bfead6 !important; color:#0b7d55 !important; }
+.o_tag.state-request    { background:#e8f1fe !important; border-color:#c7dafd !important; color:#1a5fd4 !important; }
+.o_tag.state-paypending { background:#fff4e5 !important; border-color:#ffd8a8 !important; color:#8a4b00 !important; }
+.o_tag.state-option     { background:#f1eaff !important; border-color:#dac8ff !important; color:#5b34c9 !important; }
+.o_tag.state-privateuse { background:#eef0f3 !important; border-color:#d7dbe1 !important; color:#4b5563 !important; }
+.o_tag.state-preonboard { background:#e8fbe9 !important; border-color:#bff0c2 !important; color:#166534 !important; }
+.o_tag.state-confirmed  { background:#e7faf5 !important; border-color:#b9efe4 !important; color:#0b7a69 !important; }
+.o_tag.state-cancelled  { background:#feecec !important; border-color:#ffc9c9 !important; color:#b42318 !important; }
+.o_tag.state-invoiced   { background:#e6fbfa !important; border-color:#b9efed !important; color:#0f766e !important; }

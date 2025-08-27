@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Tu código de reordenar columnas -->
+    <record id="rental_order_tree_view_inherit" model="ir.ui.view">
+        <field name="name">sale.order.tree.rental.reorder</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rental_status']" position="replace"/>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="rental_status" widget="badge" 
+                       decoration-success="rental_status == 'return'" 
+                       decoration-warning="rental_status == 'pickup'" 
+                       decoration-info="rental_status == 'reserved'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

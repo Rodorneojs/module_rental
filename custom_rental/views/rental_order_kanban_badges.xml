@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="custom_rental_view_rental_order_kanban_badges" model="ir.ui.view">
+        <field name="name">custom_rental.rental_order.kanban.badges</field>
+        <field name="model">sale.order</field>
+        <!-- VERIFICA este ID en el depurador -->
+        <field name="inherit_id" ref="sale_renting.rental_order_view_kanban"/>
+        <field name="arch" type="xml">
+            
+            <!-- 1) Exponer el campo al kanban (una sola vez) -->
+            <xpath expr="//kanban" position="inside">
+                <field name="x_schedule_state"/>
+            </xpath>
+            
+            <!-- OCULTAR BADGES NATIVOS -->
+            <xpath expr="//templates/t[@t-name='card']/footer/field[@name='state']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="modifiers">{'invisible': true}</attribute>
+                <attribute name="class" add=" d-none"/>
+            </xpath>
+            <xpath expr="//templates/t[@t-name='card']/footer/field[@name='rental_status']" position="attributes">
+                <attribute name="invisible">1</attribute>
+                <attribute name="modifiers">{'invisible': true}</attribute>
+                <attribute name="class" add=" d-none"/>
+            </xpath>
+            
+            <!-- TUS BADGES (a la derecha del footer) -->
+            <xpath expr="//templates/t[@t-name='card']/footer" position="inside">
+                <div class="ms-auto d-flex cr-schedule-badges">
+                    <t t-set="st" t-value="record.x_schedule_state and record.x_schedule_state.raw_value or ''"/>
+                    
+                    <t t-if="st == 'available'">
+                        <span class="o_tag state-available"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'request'">
+                        <span class="o_tag state-request"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'pay_pending'">
+                        <span class="o_tag state-paypending"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'option'">
+                        <span class="o_tag state-option"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'private_use'">
+                        <span class="o_tag state-privateuse"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'pre_onboard'">
+                        <span class="o_tag state-preonboard"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'confirmed'">
+                        <span class="o_tag state-confirmed"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'cancelled'">
+                        <span class="o_tag state-cancelled"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                    <t t-if="st == 'invoiced'">
+                        <span class="o_tag state-invoiced"><t t-esc="record.x_schedule_state.value"/></span>
+                    </t>
+                </div>
+            </xpath>
+            
+        </field>
+    </record>
+</odoo>

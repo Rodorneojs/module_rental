@@ -28,7 +28,7 @@
             
             <!-- 3) Inserta tu bloque de 'fecha única' justo después -->
             <xpath expr="//group[.//field[@name='pickup_date']]" position="after">
-                <group string="Rental period (single date)" name="x_rental_single_date_group">
+                <group string="Periodo de alquiler (fecha única)" name="x_rental_single_date_group">
                     <field name="x_turn_date" required="1"/>
                     <field name="x_turn_hour_from" required="1"/>
                     <field name="x_turn_hour_to" required="1"/>

@@ -16,13 +16,13 @@
             </xpath>
             
             <xpath expr="//field[@name='x_turn_season_id']" position="after">
-                <field name="x_schedule_state" string="Schedule State"/>
+                <field name="x_schedule_state" string="Estado"/>
             </xpath>
             
             <xpath expr="//field[@name='embarcacion_id']" position="replace"/>
             
             <xpath expr="//field[@name='payment_term_id']" position="after">
-                <label for="x_turn_date" string="Rental Period"/>
+                <label for="x_turn_date" string="Periodo de alquiler"/>
                 <div class="o_row">
                     <field name="x_turn_date" nolabel="1" class="oe_inline"/>
                     <label for="x_turn_hour_from" string="Hora Inicio:" class="oe_inline mx-1 fw-bold"/>

@@ -12,7 +12,7 @@ class RentalProductPickerWizard(models.TransientModel):
         "product.product",
         string="Producto",
         required=True,
-        domain="[('sale_ok','=',False), ('rent_ok','=',True)]",
+        domain="[('product_tmpl_id.rent_ok','=',True), ('active','=',True)]",
     )
     product_uom_qty = fields.Float(string="Cantidad", default=1.0)
     # NUEVO: el mismo combo de estados que en la orden
@@ -42,7 +42,7 @@ class RentalProductPickerWizard(models.TransientModel):
 
         order = self.order_id.sudo()
 
-        # ---- (tu código actual para crear la línea) ----
+        # Contexto para precios/idioma/compañía
         ctx = {
             "lang": order.partner_id.lang or self.env.user.lang,
             "partner_id": order.partner_id.id,
@@ -56,10 +56,11 @@ class RentalProductPickerWizard(models.TransientModel):
             "product_id": self.product_id.id,
             "product_uom_qty": self.product_uom_qty or 1.0,
         }
+        # Marcar línea como de alquiler si el campo existe en esta base
         if "is_rental" in Line._fields:
             vals["is_rental"] = True
 
-        # Copiar fechas de la orden a la línea, como ya hacías
+        # Copiar fechas de la orden a la línea, compatibles con distintas instalaciones
         def _order_field(name):
             return name if name in self.env["sale.order"]._fields else False
         def _line_field(name):
@@ -75,6 +76,7 @@ class RentalProductPickerWizard(models.TransientModel):
         if stop_o and stop_l:
             vals[stop_l] = getattr(order, stop_o)
 
+        # Onchanges para impuestos/precio/descripcion
         tmp = Line.new(vals)
         if hasattr(tmp, "_onchange_product_id"):
             tmp._onchange_product_id()
@@ -82,11 +84,11 @@ class RentalProductPickerWizard(models.TransientModel):
             tmp._onchange_product_uom_qty()
         Line.create(tmp._convert_to_write(tmp._cache))
 
-        # NUEVO: escribir el estado elegido en la orden
-        if self.schedule_state:
-            order.write({'x_schedule_state': self.schedule_state})
+        # Escribir estado de agenda en la orden si el wizard trae uno
+        if getattr(self, "schedule_state", False) and "x_schedule_state" in order._fields:
+            order.write({"x_schedule_state": self.schedule_state})
 
-        # Recalcular precios si procede (tu lógica existente)
+        # Re-preciar si tu orden tiene ese método
         if hasattr(order, "action_update_rental_prices"):
             try:
                 order.action_update_rental_prices()

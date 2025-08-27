@@ -1,30 +1,39 @@
-<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- PRIMARY form de Rental (Odoo 18) -->
-    <record id="view_order_form_hide_rental_dates_primary" model="ir.ui.view">
-        <field name="name">sale.order.form.hide.rental.dates.primary</field>
-        <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
-        <!-- prioridad alta para ganar a otras herencias -->
-        <field name="priority">2000</field>
-        <field name="arch" type="xml">
-            <!-- Eliminar los campos nativos -->
-            <!-- Ocultar los campos -->
-            <xpath expr="//field[@name='rental_start_date']" position="replace"/>
-            <xpath expr="//field[@name='rental_return_date']" position="replace"/>
-        </field>
-    </record>
-    
-    <!-- SECUNDARIA (algunas instalaciones alternan a otra vista) -->
-    <record id="view_order_form_hide_rental_dates_secondary" model="ir.ui.view">
-        <field name="name">sale.order.form.hide.rental.dates.secondary</field>
-        <field name="model">sale.order</field>
-        <field name="inherit_id" ref="sale.view_order_form"/>
-        <field name="priority">2000</field>
-        <field name="arch" type="xml">
-            <!-- Ocultar los campos -->
-            <xpath expr="//field[@name='rental_start_date']" position="replace"/>
-            <xpath expr="//field[@name='rental_return_date']" position="replace"/>
-        </field>
-    </record>
+  <record id="view_order_form_fix_clean_daterange" model="ir.ui.view">
+    <field name="name">sale.order.form.fix.clean.daterange</field>
+    <field name="model">sale.order</field>
+    <field name="inherit_id" ref="sale_renting.rental_order_primary_form_view"/>
+    <!-- prioridad alta para imponerse a herencias previas -->
+    <field name="priority">2400</field>
+    <field name="arch" type="xml">
+
+      <!-- 1) Insertar un único widget daterange funcional, con su fin enlazado -->
+      <xpath expr="//field[@name='payment_term_id']" position="after">
+        <div class="o_row">
+          <field name="rental_start_date"
+                 string="Rental Period"
+                 widget="daterange"
+                 options="{'end_date_field': 'rental_return_date', 'time': true}"/>
+          <!-- el fin debe existir, pero puede ir oculto -->
+          <field name="rental_return_date" invisible="1"/>
+        </div>
+      </xpath>
+
+      <!-- 2) Ocultar los controles alternativos (sin borrarlos) para evitar “clic en texto” -->
+      <xpath expr="//field[@name='x_turn_date']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='x_turn_hour_from']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//field[@name='x_turn_hour_to']" position="attributes">
+        <attribute name="invisible">1</attribute>
+      </xpath>
+      <xpath expr="//label[@for='x_turn_date'] | //label[normalize-space()='Rental Period']"
+             position="attributes">
+        <attribute name="style">display:none</attribute>
+      </xpath>
+
+    </field>
+  </record>
 </odoo>

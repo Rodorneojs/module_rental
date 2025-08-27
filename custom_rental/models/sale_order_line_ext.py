@@ -18,6 +18,8 @@ class SaleOrderLine(models.Model):
     )
     # ¡OJO! Nada de campos que no existan en sale.order.line aquí.
     # Nos enganchamos a cambios en la orden: cualquier write en SO actualiza write_date.
+    #Esta funcion hay q modificarla para q tome las fechas de la orden si no estan en la linea
+    #Hay q modificar para q no afecte el funcionamento de eliminar schedules y ordenes en cascada
     @api.depends('order_id', 'order_id.write_date')
     def _compute_turn_sched(self):
         for l in self:

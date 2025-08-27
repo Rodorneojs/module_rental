@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_rental_order_tree_inherit" model="ir.ui.view">
+        <field name="name">sale.order.tree.inherit.schedule</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rental_status']" position="attributes">
+                <attribute name="optional">hide</attribute>
+            </xpath>
+            
+            <!-- Agrega tu campo después del rental_status oculto -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="x_schedule_state"
+                       string="Estado de Alquiler"
+                       widget="badge"
+                       decoration-success="x_schedule_state in ('available','confirmed','invoiced')"
+                       decoration-warning="x_schedule_state in ('pay_pending','option','pre_onboard')"
+                       decoration-info="x_schedule_state in ('request','private_use')"
+                       decoration-danger="x_schedule_state == 'cancelled'"/>
+            </xpath>
+            
+            <!-- Sombrear fila cuando está cancelado -->
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-muted">x_schedule_state == 'cancelled'</attribute>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <record id="view_hide_rental_status_field" model="ir.ui.view">
+        <field name="name">sale.order.tree.hide.rental.status</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
+        <field name="priority">999</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='rental_status']" position="replace"/>
+        </field>
+    </record>
+    
+</odoo>

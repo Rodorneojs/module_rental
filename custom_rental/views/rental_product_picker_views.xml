@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        
+        <!-- Vista del wizard -->
+        <record id="view_rental_product_picker_wizard_form" model="ir.ui.view">
+            <field name="name">rental.product.picker.wizard.form</field>
+            <field name="model">rental.product.picker.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Seleccionar producto" class="o_form_nosheet">
+                    <group>
+                        <field name="order_id" invisible="1"/>
+                        <field name="product_id" domain="[('product_tmpl_id.rent_ok','=',True), ('active','=',True)]" options="{'no_create': false, 'no_create_edit': false}" context="{'search_default_rent_ok': 1}" can_create="True" can_write="True"/>
+                    </group>
+                    <footer>
+                        <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                        <button string="Agregar" type="object" name="action_confirm" class="btn-primary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        
+        <!-- ACCIÓN que abre el wizard (este es el xmlid que buscas) -->
+        <record id="action_rental_product_picker" model="ir.actions.act_window">
+            <field name="name">Add Product</field>
+            <field name="res_model">rental.product.picker.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_rental_product_picker_wizard_form"/>
+            <field name="target">new</field>
+        </record>
+        
+    </data>
+</odoo>

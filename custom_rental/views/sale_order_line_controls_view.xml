@@ -33,7 +33,15 @@
                 </div>
             </xpath>
             
-            <!-- IMPORTANTE: no agregamos ningún <button name="action_add_rental_product"> -->
+            <!-- Botón para abrir el wizard (FUERA del o2m) -->
+            <!-- invisible cuando: la orden NO está en draft/sent O ya hay líneas -->
+            <xpath expr="//field[@name='order_line']" position="after">
+                <button type="object"
+                        name="action_add_rental_product"
+                        string="Add a product"
+                        class="btn btn-primary mt-2"
+                        invisible="state not in ('draft','sent') or order_line"/>
+            </xpath>
         </field>
     </record>
 </odoo>
