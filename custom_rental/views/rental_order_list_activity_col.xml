@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 1) Columnas Activity y Boat en la vista LIST (después de Customer) -->
+    <record id="custom_rental_rental_order_view_list_inherit_activity"
+            model="ir.ui.view">
+        <field name="name">custom_rental.rental.order.list.activity.column</field>
+        <field name="model">sale.order</field>
+        <!-- En Odoo 18 la vista es <list>, pero el external id sigue siendo el "tree" del módulo base -->
+        <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list/field[@name='partner_id']" position="after">
+                <!-- Activity (char calculado) -->
+                <field name="x_activity_name" string="Activity" optional="show"/>
+                <!-- Boat (many2one a fleet.vehicle) -->
+                <field name="x_turn_yacht_id" string="Boat" optional="show"/>
+                <!-- Si prefieres en español: string="Embarcación" -->
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 2) Orden por defecto: número de reserva (name) descendente -->
+    <record id="custom_rental_rental_order_view_list_default_order"
+            model="ir.ui.view">
+        <field name="name">custom_rental.rental.order.list.default.order</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale_renting.rental_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="default_order">name desc, id desc</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

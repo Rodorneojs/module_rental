@@ -30,7 +30,7 @@
         </field>
     </record>
     
-    <!-- Acción para periodos disponibles -->
+    <!-- Acción -->
     <record id="action_rental_availability" model="ir.actions.act_window">
         <field name="name">Periodos Disponibles</field>
         <field name="res_model">rental.availability</field>
@@ -39,24 +39,18 @@
         <field name="search_view_id" ref="view_rental_availability_search"/>
     </record>
     
-    <!-- Menú principal de Disponibilidad dentro de Rental -->
-    <menuitem
-        id="menu_rental_availability"
-        name="Disponibilidad"
-        parent="sale_renting.rental_menu_root"
-        sequence="15"
-        />
+    <!-- Menús -->
+    <menuitem id="menu_rental_availability"
+              name="Disponibilidad"
+              parent="sale_renting.rental_menu_root"
+              sequence="15"/>
+    <menuitem id="menu_rental_periods"
+              name="Periodos Disponibles"
+              parent="menu_rental_availability"
+              action="action_rental_availability"
+              sequence="1"/>
     
-    <!-- Submenú para Periodos Disponibles -->
-    <menuitem
-        id="menu_rental_periods"
-        name="Periodos Disponibles"
-        parent="menu_rental_availability"
-        action="action_rental_availability"
-        sequence="1"
-        />
-    
-    <!-- Lista Disponibilidad -->
+    <!-- Lista -->
     <record id="view_rental_availability_list" model="ir.ui.view">
         <field name="name">rental.availability.list</field>
         <field name="model">rental.availability</field>
@@ -71,7 +65,7 @@
         </field>
     </record>
     
-    <!-- Formulario Disponibilidad -->
+    <!-- Formulario: usar RANGO (sin hora) -->
     <record id="view_rental_availability_form" model="ir.ui.view">
         <field name="name">rental.availability.form</field>
         <field name="model">rental.availability</field>
@@ -79,8 +73,13 @@
             <form string="Disponibilidad para Alquiler">
                 <group>
                     <field name="boat_id"/>
-                    <field name="date_from"/>
-                    <field name="date_to"/>
+                    <!-- Rango de fechas (sustituye a date_from/date_to visibles) -->
+                    <field name="date_from_dt"
+                           widget="daterange"
+                           required="1"
+                           options="{'end_date_field': 'date_to_dt'}"
+                           string="Fechas Desde y Hasta"/>
+                    <field name="date_to_dt" invisible="1"/>
                     <field name="state"/>
                     <field name="notes"/>
                 </group>
@@ -88,7 +87,7 @@
         </field>
     </record>
     
-    <!-- Calendario Disponibilidad -->
+    <!-- Calendario -->
     <record id="view_rental_availability_calendar" model="ir.ui.view">
         <field name="name">rental.availability.calendar</field>
         <field name="model">rental.availability</field>
@@ -104,46 +103,35 @@
             </calendar>
         </field>
     </record>
-
+    
+    <!-- Inherit del Gantt (sin cambios funcionales aquí) -->
     <record id="custom_rental_rental_schedule_view_gantt_inherit_status"
-        model="ir.ui.view">
-      <field name="name">custom_rental.rental_schedule.gantt.inherit.status</field>
-      <field name="model">sale.rental.schedule</field>
-      <field name="inherit_id" ref="sale_renting.rental_schedule_view_gantt"/>
-      <field name="priority" eval="9999"/>
-      <field name="arch" type="xml">
-
-        <!-- 1) Enviar el compute al dataset del Gantt -->
-        <xpath expr="//gantt/field[last()]" position="after">
-          <field name="x_status_label"/>
-        </xpath>
-
-        <!-- 2) Reemplazar SOLO la fila "Status — ..." (4º div del popover) -->
-        <xpath expr="//div[@t-name='gantt-popover']/div[4]" position="replace">
-          <div>
-            <strong>Status — </strong>
-
-            <!-- Si está Late, mantenemos la lógica original -->
-            <t t-if="late">
-              Late
-              <t t-if="report_line_status == 'reserved'">Pickup</t>
-              <t t-elif="report_line_status == 'pickedup'">Return</t>
-            </t>
-
-            <!-- Si no está Late: usa el label calculado (igual que Orders) -->
-            <t t-else="">
-              <t t-if="x_status_label">
-                <t t-esc="x_status_label"/>
-              </t>
-              <!-- Fallback ultra seguro si aún no llegó el compute -->
-              <t t-elif="state in ['draft','sent']">Quotation</t>
-              <t t-elif="report_line_status == 'pickedup'">Picked-Up</t>
-              <t t-elif="report_line_status == 'returned'">Returned</t>
-              <t t-else="">Reserved</t>
-            </t>
-          </div>
-        </xpath>
-
-      </field>
+            model="ir.ui.view">
+        <field name="name">custom_rental.rental_schedule.gantt.inherit.status</field>
+        <field name="model">sale.rental.schedule</field>
+        <field name="inherit_id" ref="sale_renting.rental_schedule_view_gantt"/>
+        <field name="priority" eval="9999"/>
+        <field name="arch" type="xml">
+            <xpath expr="//gantt/field[last()]" position="after">
+                <field name="x_status_label"/>
+            </xpath>
+            <xpath expr="//div[@t-name='gantt-popover']/div[4]" position="replace">
+                <div>
+                    <strong>Status — </strong>
+                    <t t-if="late">
+                        Late
+                        <t t-if="report_line_status == 'reserved'">Pickup</t>
+                        <t t-elif="report_line_status == 'pickedup'">Return</t>
+                    </t>
+                    <t t-else="">
+                        <t t-if="x_status_label"><t t-esc="x_status_label"/></t>
+                        <t t-elif="state in ['draft','sent']">Quotation</t>
+                        <t t-elif="report_line_status == 'pickedup'">Picked-Up</t>
+                        <t t-elif="report_line_status == 'returned'">Returned</t>
+                        <t t-else="">Reserved</t>
+                    </t>
+                </div>
+            </xpath>
+        </field>
     </record>
 </odoo>

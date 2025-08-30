@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     
-    <!-- Lista simple para rental.calendar.date (intacta) -->
+    <!-- Lista simple para rental.calendar.date -->
     <record id="view_rental_calendar_date_list" model="ir.ui.view">
         <field name="name">rental.calendar.date.list</field>
         <field name="model">rental.calendar.date</field>
@@ -35,7 +35,6 @@
             
             <xpath expr="//sheet/notebook" position="inside">
                 <page name="turns_tab" string="Turnos">
-                    
                     <field name="turn_param_line_ids" nolabel="1">
                         <list create="false" delete="false">
                             <field name="yacht_id"/>
@@ -45,8 +44,7 @@
                             <field name="hour_to" widget="float_time"/>
                             <field name="quota"/>
                             <button name="unlink" type="object" icon="fa-trash"
-                                    confirm="¿Deseas eliminar el registro?"
-                                    title="Eliminar"/>
+                                    confirm="¿Deseas eliminar el registro?" title="Eliminar"/>
                         </list>
                         <form string="Turno" create="false" edit="false">
                             <group>
@@ -67,7 +65,6 @@
                                 class="btn-primary"
                                 context="{'default_hour_from': 8.0, 'default_hour_to': 18.0}"/>
                     </div>
-                    
                 </page>
             </xpath>
         </field>
@@ -80,18 +77,25 @@
         <field name="arch" type="xml">
             <form string="Registrar parámetros y fechas" create="false" edit="false">
                 <sheet>
+                    
                     <group col="2">
                         <group>
                             <field name="product_id" readonly="1"/>
                             <field name="yacht_id"/>
-                            <field name="season_id"/>
-                            <!-- Campos Float con widget de hora -->
+                            <field name="season_id" required="1"/>
                             <field name="hour_from" widget="float_time"/>
                             <field name="hour_to" widget="float_time"/>
                             <field name="quota"/>
                         </group>
                         <group>
-                            <!-- Campo auxiliar, se mantiene oculto -->
+                            <label for="allowed_start_date" string="Rango de temporada"/>
+                            <div>
+                                <span invisible="not season_id">
+                                    Desde <field name="allowed_start_date" readonly="1" style="width:auto;"/>
+                                    hasta <field name="allowed_end_date" readonly="1" style="width:auto;"/>
+                                </span>
+                            </div>
+                            
                             <field name="line_ids" nolabel="1" invisible="1">
                                 <list create="false" delete="true" editable="bottom">
                                     <field name="date"/>
@@ -100,17 +104,20 @@
                         </group>
                     </group>
                     
-                    <!-- NUEVO: json con fechas bloqueadas para el widget -->
                     <field name="disabled_dates_json" invisible="1"/>
                     
-                    <group string="Calendario selección multiples fechas">
+                    <group string="Calendario - Selección de múltiples fechas" invisible="not season_id">
                         <field name="wizard_available_dates"
                                widget="range_planner"
                                nolabel="1"/>
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
+                    <button name="action_confirm"
+                            type="object"
+                            string="Guardar"
+                            class="btn-primary"
+                            invisible="not season_id"/>
                     <button string="Cancelar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>

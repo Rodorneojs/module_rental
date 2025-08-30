@@ -39,12 +39,16 @@
         'views/sale_order_schedule_state_view.xml',
         'views/rental_order_partner_default.xml',
         'views/sale_order_add_class.xml',
+
+        'views/rental_order_list_activity_col.xml',
+
         'views/rental_product_picker_views.xml',
         'views/rental_order_kanban_badges.xml',
         'views/rental_order_search_view.xml',
         'views/rental_order_badges_list_view.xml',
         'data/sale_order_list_status_view.xml',
         'data/rental_action_overrides_list.xml',
+
     ],
     'installable': True,
     'application': False,

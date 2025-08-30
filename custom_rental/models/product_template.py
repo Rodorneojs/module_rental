@@ -145,3 +145,19 @@ class ProductTemplate(models.Model):
         # Para ver el cambio reflejado en la cabecera ANTES de guardar
         for rec in self:
             rec.name = rec.title or False
+    def action_open_turn_batch_wizard(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Registrar parámetros y fechas"),
+            "res_model": "rental.turn.batch.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_product_id": self.id,
+                "default_hour_from": self.env.context.get("default_hour_from", 8.0),
+                "default_hour_to": self.env.context.get("default_hour_to", 18.0),
+                "default_yacht_id": self.env.context.get("default_yacht_id"),
+                "default_season_id": self.env.context.get("default_season_id"),
+            },
+        }

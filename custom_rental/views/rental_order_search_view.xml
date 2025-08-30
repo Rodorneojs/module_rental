@@ -5,40 +5,76 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale_renting.rental_order_view_search"/>
         <field name="arch" type="xml">
-            
-            <!-- Reemplaza TODO el searchpanel por el tuyo -->
+
+            <!-- A) Searchpanel con tus facetas -->
             <xpath expr="//searchpanel" position="replace">
                 <searchpanel>
-                    <!-- Cambiado select="multi" a select="one" para tener opción "All" -->
-                    <field name="x_schedule_state" string="Rental Status" select="one" icon="fa-retweet" enable_counters="1"/>
-                    <field name="invoice_status" string="Invoice Status" select="one" icon="fa-file-text-o" enable_counters="1"/>
+                    <!-- Estado propio -->
+                    <field name="x_schedule_state"
+                           string="Rental Status"
+                           select="one"
+                           icon="fa-retweet"
+                           enable_counters="1"/>
+
+                    <!-- Embarcación -->
+                    <field name="x_turn_yacht_id"
+                           string="Boat"
+                           select="one"
+                           icon="fa-ship"
+                           enable_counters="1"/>
+
+                    <!-- Activity (product.template) -->
+                    <field name="x_activity_product_tmpl_id"
+                           string="Activity"
+                           select="one"
+                           icon="fa-cube"
+                           enable_counters="1"/>
+
+                    <!-- Estado de factura -->
+                    <field name="invoice_status"
+                           string="Invoice Status"
+                           select="one"
+                           icon="fa-file-text-o"
+                           enable_counters="1"/>
                 </searchpanel>
             </xpath>
-            
-            <!-- B) Group By 'Status' -> por tu campo -->
+
+            <!-- B) Group By 'Status' (tu campo) -->
             <xpath expr="//search/group/filter[@name='groupby_status']" position="replace">
-                <filter name="group_x_schedule_state" string="Status" context="{'group_by': 'x_schedule_state'}"/>
+                <filter name="group_x_schedule_state"
+                        string="Status"
+                        context="{'group_by': 'x_schedule_state'}"/>
             </xpath>
-            
-            <!-- C) Quitar filtros que dependían de rental_status -->
+
+            <!-- C) Group By adicionales: Boat y Activity -->
+            <xpath expr="//search/group" position="inside">
+                <filter name="groupby_boat"
+                        string="Embarcación"
+                        context="{'group_by': 'x_turn_yacht_id'}"/>
+                <filter name="groupby_activity"
+                        string="Activity"
+                        context="{'group_by': 'x_activity_product_tmpl_id'}"/>
+            </xpath>
+
+            <!-- D) Elimina filtros antiguos que dependían del rental_status estándar -->
             <xpath expr="//search/filter[@name='rental_late_orders']" position="replace"/>
             <xpath expr="//search/filter[@name='filter_pickup']" position="replace"/>
             <xpath expr="//search/filter[@name='filter_return']" position="replace"/>
-            
-            <!-- D) (Opcional) Filtros rápidos por tus estados -->
+
+            <!-- E) Filtros rápidos por tus estados -->
             <xpath expr="//search" position="inside">
                 <separator/>
-                <filter name="st_available" string="Available" domain="[('x_schedule_state','=','available')]"/>
-                <filter name="st_request" string="Request" domain="[('x_schedule_state','=','request')]"/>
+                <filter name="st_available"   string="Available"   domain="[('x_schedule_state','=','available')]"/>
+                <filter name="st_request"     string="Request"     domain="[('x_schedule_state','=','request')]"/>
                 <filter name="st_pay_pending" string="Pay Pending" domain="[('x_schedule_state','=','pay_pending')]"/>
-                <filter name="st_option" string="Option" domain="[('x_schedule_state','=','option')]"/>
+                <filter name="st_option"      string="Option"      domain="[('x_schedule_state','=','option')]"/>
                 <filter name="st_private_use" string="Private Use" domain="[('x_schedule_state','=','private_use')]"/>
-                <filter name="st_pre_onboard" string="PreOnboard" domain="[('x_schedule_state','=','pre_onboard')]"/>
-                <filter name="st_confirmed" string="Confirmed" domain="[('x_schedule_state','=','confirmed')]"/>
-                <filter name="st_cancelled" string="Cancelled" domain="[('x_schedule_state','=','cancelled')]"/>
-                <filter name="st_invoiced" string="Invoiced" domain="[('x_schedule_state','=','invoiced')]"/>
+                <filter name="st_pre_onboard" string="PreOnboard"  domain="[('x_schedule_state','=','pre_onboard')]"/>
+                <filter name="st_confirmed"   string="Confirmed"   domain="[('x_schedule_state','=','confirmed')]"/>
+                <filter name="st_cancelled"   string="Cancelled"   domain="[('x_schedule_state','=','cancelled')]"/>
+                <filter name="st_invoiced"    string="Invoiced"    domain="[('x_schedule_state','=','invoiced')]"/>
             </xpath>
-            
+
         </field>
     </record>
 </odoo>

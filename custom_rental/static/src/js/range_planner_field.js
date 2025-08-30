@@ -8,6 +8,9 @@ import { useService } from "@web/core/utils/hooks";
 
 const SELECT_COLOR = "#875A7B";
 const HIGHLIGHT_COLOR = "rgba(135, 90, 123, 0.18)";
+const GREEN = "#4CAF50";
+const BUSY_BG = "#ffeeee";
+const DISABLED_BG = "#f5f5f5";
 
 class RangePlannerField extends Component {
   static template = "custom_rental.RangePlannerField";
@@ -16,159 +19,251 @@ class RangePlannerField extends Component {
 
   setup() {
     this.orm = useService("orm");
-
     this.calRef = useRef("calendar");
     this.inputRef = useRef("input");
 
     this.calendar = null;
     this.selected = new Set();
-    this.disabled = new Set(); // NUEVO: días ocupados
+    this.preselected = new Set();
+    this.busy = new Set();
+    this.allowedStart = null;
+    this.allowedEnd = null;
 
-    // -------- utilidades --------
-    this.parseCSV = (txt) => (txt || "").split(",").map(s => s.trim()).filter(Boolean);
-    this.fmt = (d) => d.toISOString().slice(0, 10);
-    this.addDaysISO = (iso, n) => {
-      const [y, m, d] = iso.split("-").map(Number);
-      const dt = new Date(y, m - 1, d);
-      dt.setHours(12, 0, 0, 0);
-      dt.setDate(dt.getDate() + n);
-      return this.fmt(dt);
+    this._drag = { active: false, start: null, moved: false };
+
+    // -------- utils --------
+    this.parseCSV = (txt) => (txt || "").split(",").map((s) => s.trim()).filter(Boolean);
+
+    this.fmt = (v) => {
+      if (!v) return "";
+      if (typeof v === "string") {
+        const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return m[0];
+        const d = new Date(v);
+        return isNaN(d) ? "" : d.toISOString().slice(0, 10);
+      }
+      if (v instanceof Date) return v.toISOString().slice(0, 10);
+      if (typeof v === "object") {
+        if (Number.isInteger(v.year) && Number.isInteger(v.month) && Number.isInteger(v.day)) {
+          const mm = String(v.month).padStart(2, "0");
+          const dd = String(v.day).padStart(2, "0");
+          return `${v.year}-${mm}-${dd}`;
+        }
+        if (typeof v.toISOString === "function") return v.toISOString().slice(0, 10);
+        try { const d = new Date(v); return isNaN(d) ? "" : d.toISOString().slice(0, 10); } catch { return ""; }
+      }
+      return "";
     };
-    this.forEachISOInRange = (s, e, cb) => { let cur = s; while (cur < e) { cb(cur); cur = this.addDaysISO(cur, 1); } };
-    this.toCSV = () => Array.from(this.selected).sort().join(", ");
-    this.toggleDay = (iso) => this.selected.has(iso) ? this.selected.delete(iso) : this.selected.add(iso);
-    this.isDisabled = (dateObj) => this.disabled.has(this.fmt(dateObj));
 
-    this._bufferUpdate = (val) => {
+    this.todayISO = () => this.fmt(new Date());
+    this.addDaysISO = (val, n) => {
+      const s = this.fmt(val); if (!s) return "";
+      const [y,m,d] = s.split("-").map(Number);
+      const dt = new Date(y, m-1, d); dt.setHours(12,0,0,0); dt.setDate(dt.getDate()+n);
+      return dt.toISOString().slice(0,10);
+    };
+
+    this.inSeason = (iso) => !!iso && !!this.allowedStart && !!this.allowedEnd && iso >= this.allowedStart && iso <= this.allowedEnd;
+    this.isDisabledISO = (iso) => !this.inSeason(iso) || this.busy.has(iso);
+    this.toCSV = () => Array.from(new Set([...this.preselected, ...this.selected])).sort().join(", ");
+
+    this._commitValue = () => {
+      const val = this.toCSV();
+      if (this.inputRef.el) {
+        this.inputRef.el.value = val;
+        this.inputRef.el.dispatchEvent(new Event("input", { bubbles: true }));
+        this.inputRef.el.dispatchEvent(new Event("change", { bubbles: true }));
+      }
       if (typeof this.props.update === "function") this.props.update(val);
       else if (this.props.record && this.props.name) this.props.record.update({ [this.props.name]: val });
     };
 
-    // Renderizar selección como "background events"
-    this.renderSelected = () => {
-      if (!this.calendar) return;
-      this.calendar.batchRendering(() => {
-        // Primero limpiamos TODO y volvemos a pintar disabled + selected
-        this.calendar.removeAllEvents();
-        // Disabled como background
-        for (const day of this.disabled) {
-          const end = this.addDaysISO(day, 1);
-          this.calendar.addEvent({ start: day, end, allDay: true, display: "background", className: "busy-day" });
-        }
-        // Selección actual
-        for (const day of this.selected) {
-          const end = this.addDaysISO(day, 1);
-          this.calendar.addEvent({ start: day, end, allDay: true, display: "background", color: SELECT_COLOR });
+    this.toggleDay = (iso) => {
+      if (this.isDisabledISO(iso)) return false;
+      if (this.preselected.has(iso)) { this.preselected.delete(iso); this.selected.delete(iso); }
+      else if (this.selected.has(iso)) { this.selected.delete(iso); }
+      else { this.selected.add(iso); }
+      return true;
+    };
+
+    this.repaint = () => {
+      if (!this.calRef.el) return;
+      const cells = this.calRef.el.querySelectorAll(".fc-daygrid-day");
+      cells.forEach((cell) => {
+        const iso = cell.getAttribute("data-date");
+        cell.classList.remove("rp-out","rp-busy","rp-pre","rp-sel","rp-clickable","rp-drag");
+        const out = !this.inSeason(iso);
+        const busy = this.busy.has(iso);
+        const isPre = this.preselected.has(iso);
+        const isSel = this.selected.has(iso);
+        if (out) cell.classList.add("rp-out");
+        else if (busy) cell.classList.add("rp-busy");
+        else {
+          if (isPre) cell.classList.add("rp-pre");
+          if (isSel) cell.classList.add("rp-sel");
+          cell.classList.add("rp-clickable");
         }
       });
     };
 
-    // -------- ciclo de vida --------
+    // -------- lifecycle --------
     onWillStart(async () => {
       await loadCSS("/custom_rental/static/src/lib/fullcalendar/main.min.css");
       await loadJS("/custom_rental/static/src/lib/fullcalendar/index.global.min.js");
     });
 
     onWillUpdateProps((next) => {
-      // 1) CSV seleccionado
-      const newSet = new Set(this.parseCSV(next.value));
-      const sameSel = newSet.size === this.selected.size && Array.from(newSet).every((d) => this.selected.has(d));
-      if (!sameSel) {
-        this.selected = newSet;
-        if (this.inputRef.el) this.inputRef.el.value = this.toCSV();
+      this.allowedStart = this.fmt(next?.record?.data?.allowed_start_date || null) || null;
+      this.allowedEnd   = this.fmt(next?.record?.data?.allowed_end_date   || null) || null;
+
+      this.preselected = new Set(this.parseCSV(next.value).map(this.fmt).filter((d) => d && this.inSeason(d)));
+      this.selected = new Set();
+
+      try { this.busy = new Set(JSON.parse(next?.record?.data?.disabled_dates_json || "[]")); } catch { this.busy = new Set(); }
+
+      this._commitValue();
+
+      if (this.calendar) {
+        if (this.allowedStart && this.allowedEnd) this.calendar.changeView("multiMonthYear", this.allowedStart);
+        setTimeout(() => this.repaint(), 0);
       }
-      // 2) Fechas bloqueadas (pueden cambiar si el user toca horas/temporada/embarcación)
-      const nextDisabledJSON = (next?.record?.data?.disabled_dates_json || "[]");
-      let nextDisabled = new Set();
-      try { nextDisabled = new Set(JSON.parse(nextDisabledJSON)); } catch (e) {}
-      const sameDisabled = nextDisabled.size === this.disabled.size && Array.from(nextDisabled).every(d => this.disabled.has(d));
-      if (!sameDisabled) {
-        this.disabled = nextDisabled;
-      }
-      // Re-pintar si cambió algo
-      if (this.calendar) this.renderSelected();
     });
 
     onMounted(() => {
-      const calEl = this.calRef.el;
-      const inputEl = this.inputRef.el;
-      if (!calEl || !inputEl) return;
+      const calEl = this.calRef.el; if (!calEl) return;
+      const FC = window.FullCalendar; if (!FC?.Calendar) return;
 
-      const FC = window.FullCalendar;
-      if (!FC?.Calendar) return;
+      this.allowedStart = this.fmt(this.props?.record?.data?.allowed_start_date || null) || null;
+      this.allowedEnd   = this.fmt(this.props?.record?.data?.allowed_end_date   || null) || null;
 
-      // Inicial: CSV seleccionado + JSON disabled
-      this.parseCSV(this.props.value).forEach((d) => this.selected.add(d));
-      inputEl.value = this.toCSV();
-      try {
-        this.disabled = new Set(JSON.parse(this.props?.record?.data?.disabled_dates_json || "[]"));
-      } catch (e) { this.disabled = new Set(); }
+      this.preselected = new Set(); this.selected = new Set();
+      try { this.busy = new Set(JSON.parse(this.props?.record?.data?.disabled_dates_json || "[]")); } catch { this.busy = new Set(); }
+
+      const targetISO = (this.allowedStart && this.allowedEnd) ? this.allowedStart : this.todayISO();
 
       this.calendar = new FC.Calendar(calEl, {
         timeZone: "local",
-        now: () => { const n = new Date(); n.setHours(12,0,0,0); return n; },
+        initialDate: targetISO,
         initialView: "multiMonthYear",
+        multiMonthMaxColumns: 3,
+        multiMonthMinWidth: 260,
         locale: "es",
-        selectable: true,
+        selectable: false,            // sin selección nativa
         unselectAuto: false,
-        selectMirror: true,
-        selectMinDistance: 8,
-        longPressDelay: 0,
-        selectLongPressDelay: 0,
+        selectMirror: false,
         dayMaxEvents: true,
         eventInteractive: false,
-        headerToolbar: { left: "today prev,next", center: "title", right: "multiMonthYear,dayGridMonth,timeGridWeek,dayGridDay,listMonth" },
-
-        // Bloqueo por UI: rangos seleccionados NO pueden incluir días ocupados
-        selectAllow: (info) => {
-          for (let d = new Date(info.start); d < info.end; d.setDate(d.getDate() + 1)) {
-            if (this.isDisabled(d)) return false;
-          }
-          return true;
-        },
-
-        dayCellDidMount: ({ el, date }) => {
-          el.style.cursor = "pointer";
-          el.style.userSelect = "none";
-          if (this.isDisabled(date)) {
-            el.classList.add("fc-disabled-day");
-            el.setAttribute("title", "Día ya ocupado");
-            el.style.pointerEvents = "none"; // hard block de clicks
-          }
-        },
-
-        select: (info) => {
-          // Multi-arrastre (ya filtrado por selectAllow)
-          const s = info.startStr.slice(0, 10);
-          const e = info.endStr.slice(0, 10);
-          let changed = false;
-          for (let cur = s; cur < e; cur = this.addDaysISO(cur, 1)) {
-            if (!this.disabled.has(cur)) { this.toggleDay(cur); changed = true; }
-          }
-          this.calendar.unselect();
-          if (changed) {
-            this.renderSelected();
-            inputEl.value = this.toCSV();
-            this._bufferUpdate(inputEl.value);
-          }
-        },
-
-        dateClick: (info) => {
-          // Click simple en día: ignorar si es disabled
-          if (this.disabled.has(info.dateStr)) return;
-          this.toggleDay(info.dateStr);
-          this.renderSelected();
-          inputEl.value = this.toCSV();
-          this._bufferUpdate(inputEl.value);
-        },
+        headerToolbar: { left: "prev,next today", center: "title", right: "multiMonthYear,dayGridMonth" },
+        views: { multiMonthYear: { type: "multiMonth", duration: { months: 3 } } },
+        dayCellDidMount: () => {},
+        dayCellWillUnmount: () => {},
+        datesSet: () => setTimeout(() => this.repaint(), 0), // repintar al navegar
       });
 
-      calEl.style.setProperty("--fc-highlight-color", HIGHLIGHT_COLOR);
+      // estilos
+      const styleId = "range-planner-styles";
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+          .fc-multimonth { gap: 16px; }
+          .fc-multimonth-month {
+            background: #fff;
+            border: 1px solid rgba(0,0,0,.06);
+            border-radius: 12px;
+            padding: 8px 10px 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.03);
+          }
+          .fc-multimonth-month-title { margin: 4px 8px 8px; font-weight: 600; }
+          .fc .fc-daygrid-day { min-height: 34px; }
+
+          .rp-out .fc-daygrid-day-frame { background: ${DISABLED_BG} !important; opacity: .55; pointer-events: none; }
+          .rp-busy .fc-daygrid-day-frame { background: ${BUSY_BG} !important; pointer-events: none; }
+          .rp-pre .fc-daygrid-day-frame { background: ${GREEN}22 !important; border: 1px dashed ${GREEN}; border-radius: 10px; }
+          .rp-sel .fc-daygrid-day-frame { background: ${SELECT_COLOR}26 !important; border: 2px solid ${SELECT_COLOR}; border-radius: 10px; }
+
+          .rp-clickable { cursor: pointer; }
+          .rp-clickable:hover .fc-daygrid-day-frame { box-shadow: inset 0 0 0 2px ${SELECT_COLOR}; border-radius: 10px; }
+          .rp-drag .fc-daygrid-day-frame { box-shadow: inset 0 0 0 2px ${SELECT_COLOR}; border-radius: 10px; }
+        `;
+        document.head.appendChild(style);
+      }
+
+      this.calRef.el.style.setProperty("--fc-highlight-color", HIGHLIGHT_COLOR);
       this.calendar.render();
-      this.renderSelected();
+      this.calendar.changeView("multiMonthYear", targetISO);
+
+      this.repaint();
+      this._commitValue();
+
+      // --- Interacción propia ---
+      const onMouseDown = (ev) => {
+        const cell = ev.target.closest(".fc-daygrid-day.rp-clickable");
+        if (!cell) return;
+        const iso = cell.getAttribute("data-date");
+        if (this.isDisabledISO(iso)) return;
+        this._drag = { active: true, start: iso, moved: false };
+        ev.preventDefault();
+        cell.classList.add("rp-drag");
+      };
+
+      const onMouseEnter = (ev) => {
+        if (!this._drag.active) return;
+        const cell = ev.target.closest(".fc-daygrid-day"); if (!cell) return;
+        const overIso = cell.getAttribute("data-date");
+        this._drag.moved = true;
+        this.calRef.el.querySelectorAll(".rp-drag").forEach((el) => el.classList.remove("rp-drag"));
+        if (this._drag.start && overIso) {
+          let a = this._drag.start, b = overIso;
+          if (a > b) [a, b] = [b, a];
+          let cur = a;
+          while (cur && cur <= b) {
+            const el = this.calRef.el.querySelector(`.fc-daygrid-day[data-date="${cur}"]`);
+            if (el && !this.isDisabledISO(cur)) el.classList.add("rp-drag");
+            cur = this.addDaysISO(cur, 1);
+          }
+        }
+      };
+
+      const onMouseUp = (ev) => {
+        if (!this._drag.active) return;
+        const cell = ev.target.closest(".fc-daygrid-day");
+        const upIso = (cell && cell.getAttribute("data-date")) || this._drag.start;
+
+        this.calRef.el.querySelectorAll(".rp-drag").forEach((el) => el.classList.remove("rp-drag"));
+        const { start, moved } = this._drag;
+        this._drag = { active: false, start: null, moved: false };
+        if (!start) return;
+
+        if (!moved) {
+          if (!this.isDisabledISO(upIso) && this.toggleDay(upIso)) { this._commitValue(); this.repaint(); }
+          return;
+        }
+
+        let a = start, b = upIso; if (a > b) [a, b] = [b, a];
+        let changed = false, cur = a;
+        while (cur && cur <= b) {
+          if (!this.isDisabledISO(cur)) changed = this.toggleDay(cur) || changed;
+          cur = this.addDaysISO(cur, 1);
+        }
+        if (changed) { this._commitValue(); this.repaint(); }
+      };
+
+      calEl.addEventListener("mousedown", onMouseDown);
+      calEl.addEventListener("mouseenter", onMouseEnter, true);
+      window.addEventListener("mouseup", onMouseUp);
+
+      this._cleanup = () => {
+        calEl.removeEventListener("mousedown", onMouseDown);
+        calEl.removeEventListener("mouseenter", onMouseEnter, true);
+        window.removeEventListener("mouseup", onMouseUp);
+      };
     });
 
-    onWillUnmount(() => this.calendar?.destroy());
+    onWillUnmount(() => {
+      try { this._cleanup && this._cleanup(); } catch {}
+      this.calendar?.destroy();
+    });
   }
 }
 

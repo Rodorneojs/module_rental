@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 
 MAX_LIMIT = 5000  # techo para proteger el servidor
 
-# -------------------- Helpers (reutilizados y recortados a lo necesario) --------------------
+# -------------------- Helpers --------------------
 def _read_params(post):
     try:
         ct = (request.httprequest.content_type or "").lower()
@@ -105,10 +105,8 @@ def _today_local_date(tzname):
     return now_utc.astimezone(tz).date()
 
 def _normalize_states_filter(states_q):
-    """
-    Acepta string o lista. Devuelve lista normalizada en minúsculas.
-    'quotation' se trata como 'available'.
-    """
+    """Acepta string o lista. Devuelve lista normalizada en minúsculas.
+    'quotation' se trata como 'available'."""
     if not states_q:
         return None
     lst = states_q if isinstance(states_q, list) else [states_q]
@@ -188,8 +186,8 @@ class BookingListAPI(http.Controller):
                 )
 
             # ---- 1) Parámetros ----
-            params   = _read_params(post)
-            tzname   = _get_tzname(params)
+            params    = _read_params(post)
+            tzname    = _get_tzname(params)
 
             start_loc = _parse_local_dt(params.get('from') or params.get('start'), tzname, is_end=False)
             end_loc   = _parse_local_dt(params.get('to')   or params.get('end'),   tzname, is_end=True)
@@ -199,18 +197,79 @@ class BookingListAPI(http.Controller):
                     headers=[('Content-Type','application/json')], status=400
                 )
 
-            # límites seguros
+            # límites/offset/orden (sólo para recortar la página de salida)
             try:
-                raw_limit = int(params.get('limit', 1000))
+                result_limit = int(params.get('limit', 1000))
             except Exception:
-                raw_limit = 1000
-            limit = max(1, min(raw_limit, MAX_LIMIT))
+                result_limit = 1000
+            try:
+                offset = int(params.get('offset', 0))
+            except Exception:
+                offset = 0
+            result_limit = max(1, min(result_limit, MAX_LIMIT))
+            offset = max(0, offset)
 
+            order_by = (params.get('order_by') or "").strip().lower()
+            order_dir = (params.get('order') or "asc").strip().lower()
+            reverse_sort = (order_dir == 'desc')
+
+            # alias/param filters
             id_boat        = params.get('id_boat')
-            booking_ilike  = params.get('booking')           # parcial
-            booking_exact  = params.get('booking_number')    # exacto
-            customer_q     = params.get('customer')          # parcial sobre partner
-            states_q       = _normalize_states_filter(params.get('state'))
+            booking_ilike  = params.get('booking') or params.get('booking_number_like')
+            booking_exact  = params.get('booking_number')
+            customer_q     = params.get('customer') or params.get('client')
+            product_name_q = params.get('product_name') or params.get('activity_name_like')
+
+            # Filtro por propietario (en base a user_id)
+            owner_partner_id = None
+            # aceptamos owner_user_id / user_id o bien owner_partner_id / owner_contact_id
+            raw_user_id = params.get('owner_user_id') or params.get('user_id')
+            raw_partner_id = params.get('owner_partner_id') or params.get('owner_contact_id')
+
+            if raw_user_id not in (None, ""):
+                try:
+                    uid = int(raw_user_id)
+                except Exception:
+                    return request.make_response(
+                        json.dumps({"error": "owner_user_id debe ser numérico"}), 
+                        headers=[('Content-Type','application/json')], status=400
+                    )
+                user = request.env['res.users'].sudo().browse(uid)
+                if not user.exists():
+                    return request.make_response(
+                        json.dumps({"error": "Usuario no encontrado"}), 
+                        headers=[('Content-Type','application/json')], status=400
+                    )
+                partner = user.partner_id
+                if not partner:
+                    return request.make_response(
+                        json.dumps({"error": "El usuario no tiene partner vinculado"}), 
+                        headers=[('Content-Type','application/json')], status=400
+                    )
+                # Validar que sea Armador si el campo 'tipo' existe
+                if 'tipo' in partner._fields and (partner.tipo or '').lower() != 'armador':
+                    return request.make_response(
+                        json.dumps({"error": "El usuario indicado no es un armador"}), 
+                        headers=[('Content-Type','application/json')], status=400
+                    )
+                owner_partner_id = partner.id
+
+            elif raw_partner_id not in (None, ""):
+                try:
+                    owner_partner_id = int(raw_partner_id)
+                except Exception:
+                    return request.make_response(
+                        json.dumps({"error": "owner_partner_id debe ser numérico"}), 
+                        headers=[('Content-Type','application/json')], status=400
+                    )
+
+            # estados: aceptar 'state' y/o 'status'
+            states_from_state  = _normalize_states_filter(params.get('state'))
+            states_from_status = _normalize_states_filter(params.get('status'))
+            if states_from_state or states_from_status:
+                states_q = list({*(states_from_state or []), *(states_from_status or [])})
+            else:
+                states_q = None
 
             # ---- 2) Dominio base (overlap renting + con barco) ----
             start_utc = _local_to_utc_str(start_loc)
@@ -221,6 +280,32 @@ class BookingListAPI(http.Controller):
                 ('rental_return_date', '>=', start_utc),
                 '|', ('x_turn_yacht_id', '!=', False), ('embarcacion_id', '!=', False),
             ]
+
+            # Filtro por propietario (armador) si se pidió
+            if owner_partner_id:
+                domain += ['|',
+                    ('x_turn_yacht_id.propietario_actual_id', '=', owner_partner_id),
+                    ('embarcacion_id.propietario_actual_id', '=', owner_partner_id),
+                ]
+
+            # Filtrar por producto (nombre) previo a orders si se pidió
+            if product_name_q:
+                Line = request.env['sale.order.line'].sudo()
+                line_domain = [
+                    ('display_type', '=', False),
+                    ('product_id', '!=', False),
+                    '|',
+                    ('product_id.display_name', 'ilike', product_name_q),
+                    ('product_id.product_tmpl_id.name', 'ilike', product_name_q),
+                ]
+                line_ids = Line.search_read(line_domain, ['order_id'])
+                order_ids_from_product = list({ln['order_id'][0] for ln in line_ids if ln.get('order_id')})
+                if not order_ids_from_product:
+                    return request.make_response(
+                        json.dumps({"total": 0, "results": []}, default=str),
+                        headers=[('Content-Type','application/json')], status=200
+                    )
+                domain += [('id', 'in', order_ids_from_product)]
 
             if id_boat not in (None, ""):
                 try:
@@ -249,15 +334,17 @@ class BookingListAPI(http.Controller):
                 'amount_total',
                 'order_line',
             ]
-            orders = Order.search_read(domain, fields_order, order='rental_start_date asc, id asc', limit=limit)
+
+            # Traemos hasta MAX_LIMIT y luego paginamos en memoria para poder dar un 'total' real
+            orders = Order.search_read(domain, fields_order, order='rental_start_date asc, id asc', limit=MAX_LIMIT)
 
             if not orders:
                 return request.make_response(
-                    json.dumps({"results": []}, default=str),
+                    json.dumps({"total": 0, "results": []}, default=str),
                     headers=[('Content-Type','application/json')], status=200
                 )
 
-            # ---- 3) Periodos activos y bloqueos (igual que tu otra API) ----
+            # ---- 3) Periodos activos y bloqueos ----
             boat_ids = set()
             for o in orders:
                 if o.get('x_turn_yacht_id'):
@@ -502,17 +589,33 @@ class BookingListAPI(http.Controller):
                     "boat": boat_block,
                 })
 
-            # ---- 6) Orden final: boarding, estado (prioridad), boat, booking
+            # ---- 6) Ordenado dinámico + total + slicing de la página ----
             state_idx = self.STATE_ORDER
-            out.sort(key=lambda r: (
-                r.get('boarding') or '',
-                state_idx.get(r.get('state'), 99),
-                r.get('boat_name') or '',
-                r.get('booking_number') or ''
-            ))
+
+            def _key(rec):
+                ob = order_by or ""
+                if not ob:
+                    return (
+                        rec.get('boarding') or '',
+                        state_idx.get(rec.get('state'), 99),
+                        rec.get('boat_name') or '',
+                        rec.get('booking_number') or ''
+                    )
+                if ob == 'income':
+                    return float(rec.get('income') or 0.0)
+                if ob == 'state':
+                    return state_idx.get(rec.get('state'), 99)
+                return (rec.get(ob) or '').lower()
+
+            out_sorted = sorted(out, key=_key, reverse=reverse_sort)
+
+            total = len(out_sorted)  # total real tras TODOS los filtros/reglas
+            start = offset
+            end = start + result_limit
+            out_page = out_sorted[start:end]
 
             return request.make_response(
-                json.dumps({"results": out}, default=str),
+                json.dumps({"total": total, "results": out_page}, default=str),
                 headers=[('Content-Type','application/json')], status=200
             )
         except Exception as e:
